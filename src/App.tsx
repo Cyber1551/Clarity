@@ -6,11 +6,20 @@ import {updateMediaCache} from "@/helpers/cacheHelper.ts";
 import MediaGrid from "@/components/MediaGrid.tsx";
 import {watch} from "tauri-plugin-fs-watch-api";
 import {debounce} from "lodash-es";
+import { Loader2 } from 'lucide-react';
+
+enum CacheAction {
+    Idle,
+    Initializing,
+    Updating,
+    Error
+}
 
 function App() {
     // State to keep track of the selected folder path.
     const [folderPath, setFolderPath] = useState<string | null>(null);
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+    const [cacheAction, setCacheAction] = useState<CacheAction>(CacheAction.Idle);
 
     // Load the configuration on component mount.
     useEffect(() => {
@@ -23,18 +32,26 @@ function App() {
             }
         }
         initConfig();
+
     }, []);
 
     // Handler for when the user clicks the button to pick a folder.
     const handlePickFolder = async () => {
         const selected = await pickFolder();
         if (selected) {
-            setFolderPath(selected);
-            // Save the new folder path to the config.
-            await saveConfig({ folderPath: selected });
+            try {
+                setCacheAction(CacheAction.Initializing);
+                setFolderPath(selected);
+                // Save the new folder path to the config.
+                await saveConfig({ folderPath: selected });
 
-            const items = await updateMediaCache(selected);
-            setMediaItems(items);
+                const items = await updateMediaCache(selected);
+                setMediaItems(items);
+                setCacheAction(CacheAction.Idle);
+            } catch (error) {
+                console.error("Error initializing media cache:", error);
+                setCacheAction(CacheAction.Error);
+            }
         }
     };
 
@@ -47,12 +64,15 @@ function App() {
         // Debounced function for updating media cache and setting media items
         const debouncedUpdateMediaCache = debounce(async (folderPath: string) => {
             try {
+                setCacheAction(CacheAction.Updating);
                 const items = await updateMediaCache(folderPath);
                 setMediaItems(items);
+                setCacheAction(CacheAction.Idle);
             } catch (error) {
                 console.error("Error updating media cache:", error);
+                setCacheAction(CacheAction.Error);
             }
-        }, 300); // Debounce delay of 300ms (adjustable)
+        }, 300); // Debounce delay of 300ms
 
         (async () => {
             try {
@@ -60,11 +80,12 @@ function App() {
                     folderPath,
                     async (event) => {
                         if (event.length === 0) return;
-                        if (event[0].path.endsWith('.mediaCache.json')) return;
+                        if (event.some(x => x.path.endsWith('.mediaCache.json'))) return;
+                        if (event.some(x => x.path.includes('.thumbnails'))) return;
 
                         console.log("File system event received:", event);
 
-                        debouncedUpdateMediaCache(folderPath);
+                        await debouncedUpdateMediaCache(folderPath);
                     },
                     { recursive: true }
                 );
@@ -77,8 +98,16 @@ function App() {
             if (stopWatching) {
                 stopWatching();
             }
+
+            debouncedUpdateMediaCache?.cancel();
         };
     }, [folderPath]);
+
+    const cacheActionText: { [key: number]: string } = {
+        [CacheAction.Initializing]: "Initializing Cache...",
+        [CacheAction.Updating]: "Updating Cache...",
+        [CacheAction.Error]: "Error generating cache, please restart the program!",
+    };
 
     return (
         <div className="min-h-screen w-screen flex flex-col">
@@ -91,6 +120,14 @@ function App() {
 
                 {/* Right Side: Folder display and Pick/Change button */}
                 <div className="flex items-center space-x-4">
+                    {cacheAction !== CacheAction.Idle && (
+                        <div className="pr-4 flex items-center space-x-2">
+                            <Loader2 className="animate-spin h-5 w-5 text-gray-600" />
+                            <span className="text-sm text-gray-600">
+                                {cacheActionText[cacheAction]}
+                            </span>
+                        </div>
+                    )}
                     <span className="text-sm text-gray-600">
                         {folderPath ? folderPath : 'No folder selected'}
                     </span>

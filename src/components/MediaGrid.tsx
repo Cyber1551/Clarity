@@ -1,6 +1,7 @@
 // src/MediaGrid.tsx
 import React from 'react';
 import {MediaItem} from "@/types/media_item.ts";
+import VideoItem from "@/components/VideoItem.tsx";
 
 interface MediaGridProps {
     mediaItems: MediaItem[];
@@ -33,11 +34,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({ mediaItems }) => {
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                         ) : (
-                            <video
-                                src={`file://${item.path}`}
-                                controls
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
+                            <VideoItem videoPath={item.path} title={item.title} />
                         )}
                     </div>
                     <div style={{ marginTop: '0.5rem' }}>

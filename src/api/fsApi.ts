@@ -29,6 +29,7 @@ export async function scanDirectory(directory: string): Promise<MediaItem[]> {
     for (const entry of entries) {
         // If the entry is a directory, recursively scan it.
         if (entry.children) {
+            if (entry.path.endsWith(".thumbnails")) continue;
             // Some versions of Tauri return a `children` array for directories.
             // We assume here that if `children` exists, we perform an extra recursion.
             mediaItems = mediaItems.concat(await scanDirectory(entry.path));
