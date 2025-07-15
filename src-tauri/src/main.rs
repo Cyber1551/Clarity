@@ -90,24 +90,33 @@ async fn extract_video_metadata(path: String) -> Result<VideoMetadata, String> {
 fn main() {
   tauri::Builder::default()
     .plugin(tauri_plugin_fs_watch::init())
-     .register_uri_scheme_protocol("newuri", move |_app_handle, request| {
+     .register_uri_scheme_protocol("thumbnail", move |_app_handle, request| {
                 // Extract the requested path from the URI
-                if let Some(path) = request.uri().strip_prefix("newuri://") {
-                    // Construct the full path to the .thumbnails directory
-                    let mut file_path = PathBuf::from(".thumbnails");
-                    file_path.push(path);
+                if let Some(path) = request.uri().strip_prefix("thumbnail://") {
+                    // The path is already the full path to the thumbnail file
+                    let file_path = PathBuf::from(path);
 
                     // Read the file contents
                     match fs::read(&file_path) {
                         Ok(contents) => {
-                            // Determine the MIME type (assuming PNG images here)
-                            let mime_type = "image/png";
+                            // Determine the MIME type based on file extension
+                            let mime_type = if path.to_lowercase().ends_with(".jpg") || path.to_lowercase().ends_with(".jpeg") {
+                                "image/jpeg"
+                            } else if path.to_lowercase().ends_with(".png") {
+                                "image/png"
+                            } else {
+                                "application/octet-stream" // Default MIME type
+                            };
+
                             ResponseBuilder::new()
                                 .mimetype(mime_type)
                                 .status(200)
                                 .body(contents)
                         }
-                        Err(_) => ResponseBuilder::new().status(404).body(Vec::new()),
+                        Err(e) => {
+                            println!("Error reading thumbnail file: {}", e);
+                            ResponseBuilder::new().status(404).body(Vec::new())
+                        }
                     }
                 } else {
                     ResponseBuilder::new().status(400).body(Vec::new())

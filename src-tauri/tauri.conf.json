@@ -39,6 +39,10 @@
       },
       "shell": {
         "sidecar": true
+      },
+      "protocol": {
+        "asset": true,
+        "assetScope": ["**"]
       }
     },
     "bundle": {

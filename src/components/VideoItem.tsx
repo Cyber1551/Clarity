@@ -3,8 +3,13 @@ import React, { useEffect, useState } from 'react';
 import {convertFileSrc, invoke} from '@tauri-apps/api/tauri';
 
 interface VideoMetadata {
-    thumbnail: string; // Base64-encoded JPEG image
+    thumbnail_path: string; // Path to the thumbnail file
     duration: number;  // Duration in seconds
+}
+
+// Extended metadata with thumbnail URL
+interface ExtendedVideoMetadata extends VideoMetadata {
+    thumbnailUrl: string; // URL using our custom protocol
 }
 
 type Props = {
@@ -13,7 +18,7 @@ type Props = {
 }
 
 const VideoItem: React.FC<Props> = ({ videoPath, title }) => {
-    const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
+    const [metadata, setMetadata] = useState<ExtendedVideoMetadata | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -22,12 +27,19 @@ const VideoItem: React.FC<Props> = ({ videoPath, title }) => {
             try {
                 // Call the Tauri command to extract video metadata
                 const result = await invoke<VideoMetadata>('extract_video_metadata', { path: videoPath });
-                console.log("RESULT: ", result)
-                const newMeta: VideoMetadata = {
-                    thumbnail: convertFileSrc(result.thumbnail),
+                console.log("RESULT: ", result);
+
+                // Create a thumbnail URL using our custom protocol
+                const thumbnailUrl = `thumbnail://${result.thumbnail_path}`;
+
+                // Create a new metadata object with the thumbnail URL
+                const newMeta = {
+                    thumbnail_path: result.thumbnail_path,
+                    thumbnailUrl: thumbnailUrl,
                     duration: result.duration
-                }
-                console.log("NEW: ", newMeta)
+                };
+
+                console.log("NEW: ", newMeta);
                 setMetadata(newMeta);
             } catch (err) {
                 console.error('Error extracting video metadata:', err);
@@ -47,7 +59,7 @@ const VideoItem: React.FC<Props> = ({ videoPath, title }) => {
             {metadata && (
                 <div>
                     <img
-                        src={`${metadata.thumbnail}`}
+                        src={metadata.thumbnailUrl}
                         alt={`${title} thumbnail`}
                         style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
                     />

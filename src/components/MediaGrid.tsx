@@ -2,6 +2,7 @@
 import React from 'react';
 import {MediaItem} from "@/types/media_item.ts";
 import VideoItem from "@/components/VideoItem.tsx";
+import { convertFileSrc } from '@tauri-apps/api/tauri';
 
 interface MediaGridProps {
     mediaItems: MediaItem[];
@@ -29,7 +30,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({ mediaItems }) => {
                     <div style={{ height: '150px', overflow: 'hidden' }}>
                         {item.type === 'image' ? (
                             <img
-                                src={`file://${item.path}`}
+                                src={convertFileSrc(item.path)}
                                 alt={item.title}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
