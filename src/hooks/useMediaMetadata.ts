@@ -10,9 +10,9 @@ import { extractVideoMetadata, extractImageMetadata } from '@/api/cacheApi';
  */
 export interface MediaMetadata {
   id: number;
-  thumbnail_id: number;
   duration: number; // For videos, this is the duration in seconds; for images, it's 0
-  thumbnailUrl: string; // URL using our custom protocol
+  thumbnail_base64: string;
+  thumbnail_size: number;
 }
 
 /**
@@ -49,15 +49,7 @@ export function useMediaMetadata(mediaPath: string, mediaType: 'image' | 'video'
           result = await extractImageMetadata(mediaPath);
         }
 
-        // Create a thumbnail URL using our custom protocol with the thumbnail_id
-        const thumbnailUrl = `thumbnail://${result.thumbnail_id}`;
-
-        // Create a new metadata object with the thumbnail URL
-        const newMetadata: MediaMetadata = {
-          ...result,
-          thumbnailUrl
-        };
-        setMetadata(newMetadata);
+        setMetadata(result);
       } catch (err) {
         console.error(`Error extracting ${mediaType} metadata:`, err);
         setError(`Failed to extract ${mediaType} metadata.`);

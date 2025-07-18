@@ -2,10 +2,9 @@
  * MediaItemCard component for displaying individual media items
  * Handles both image and video items with thumbnails
  */
-import React, {useEffect, useState} from 'react';
+import React, { useState } from 'react';
 import { MediaItem } from '@/types/media_item';
-import { useMediaMetadata } from '@/hooks/useMediaMetadata';
-import {invoke} from "@tauri-apps/api/tauri";
+import { useThumbnail } from '@/hooks/useThumbnail';
 
 interface MediaItemCardProps {
   /**
@@ -18,17 +17,22 @@ interface MediaItemCardProps {
  * Component for displaying an individual media item card
  */
 const MediaItemCard: React.FC<MediaItemCardProps> = ({ item }) => {
-  // Use the custom hook to fetch metadata
-  const { metadata, loading, error } = useMediaMetadata(item.path, item.type);
-  const [yo, setYo] = useState<string>();
+  // Default thumbnail size
+  const thumbnailSize = 64;
 
-    useEffect(() => {
-        if (!metadata) return;
-        console.log("UI TEST: ", metadata.thumbnail_id);
-        invoke('get_thumbnail_by_id', { thumbnailId: metadata.thumbnail_id } ).then((x) => {
-            setYo(x);
-        });
-    }, [metadata]);
+  // Extract the media ID from the item
+  // In a real implementation, you would get this from the item object
+  // For now, we'll parse it from the path as a workaround
+  const [mediaId] = useState<number>(() => {
+    // This is a temporary solution - in a real app, the mediaId would be part of the MediaItem
+    // For now, we'll use a hash of the path to simulate an ID
+    return Math.abs(item.path.split('').reduce((acc, char) => {
+      return acc + char.charCodeAt(0);
+    }, 0));
+  });
+
+  // Use the thumbnail hook to fetch the thumbnail
+  const { thumbnail, loading, error } = useThumbnail(mediaId, thumbnailSize);
 
   return (
     <div className="border border-gray-200 rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -39,41 +43,41 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item }) => {
             <p className="text-gray-500 text-sm">Loading...</p>
           </div>
         )}
-        
+
         {error && (
           <div className="flex justify-center items-center h-full">
             <p className="text-red-500 text-sm">{error}</p>
           </div>
         )}
-        
-        {metadata && (
+
+        {thumbnail && (
           <img
-            src={yo}
-            alt={item.title}
+            src={thumbnail}
+            alt={"Thumbnail"}
             className="w-full h-full object-cover"
             onError={(e) => console.error("Error displaying thumbnail:", e)}
           />
         )}
       </div>
-      
+
       {/* Info Section */}
       <div className="p-3">
         <h3 className="text-sm font-medium truncate" title={item.title}>
           {item.title}
         </h3>
-        
+
         <div className="mt-1 flex justify-between items-center">
           <span className="text-xs text-gray-500 capitalize">
             {item.type}
           </span>
-          
-          {item.type === 'video' && metadata && (
+
+          {item.type === 'video' && item.length && (
             <span className="text-xs text-gray-500">
-              {formatDuration(metadata.duration)}
+              {formatDuration(item.length)}
             </span>
           )}
         </div>
-        
+
         {item.tags && item.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {item.tags.map((tag, index) => (

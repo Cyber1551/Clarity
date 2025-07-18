@@ -15,8 +15,8 @@ pub struct MediaItem {
 /// Thumbnail stored in the database
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Thumbnail {
-    pub id: Option<i64>,
     pub media_id: i64,
+    pub size: i32,
     pub data: Vec<u8>,
     pub mime_type: String,
 }
@@ -39,11 +39,14 @@ pub struct Bookmark {
 
 /// Video metadata returned to the frontend
 #[derive(Serialize, Deserialize)]
-pub struct VideoMetadata {
+pub struct MediaMetadata {
     pub id: i64,           // Database ID of the media item
-    pub thumbnail_id: i64, // Database ID of the thumbnail
-    pub duration: u32,     // Duration in seconds
+    pub duration: i32,
+    pub thumbnail_base64: String,
+    pub thumbnail_size: i32
 }
+
+
 
 /// Media item response returned to the frontend
 #[derive(Serialize, Deserialize)]
@@ -53,7 +56,7 @@ pub struct MediaItemResponse {
     pub title: String,
     pub media_type: String,
     pub length: Option<i64>,
-    pub thumbnail_id: Option<i64>, // ID of the thumbnail in the thumbnails table
+    pub thumbnail_base64: Option<String>,
     pub tags: Vec<String>,
     pub bookmarks: Vec<Bookmark>,
 }

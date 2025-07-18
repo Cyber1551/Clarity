@@ -16,7 +16,12 @@ import MainContent from "@/components/MainContent";
 function App() {
   // Use custom hooks for configuration, media cache, and file watching
   const { config, updateConfig } = useConfig();
+
   const { mediaItems, cacheAction, initializeCache, refreshCache, cacheActionText } = useMediaCache();
+
+  useEffect(() => {
+    console.log(mediaItems)
+  }, [mediaItems]);
 
   // Set up file watcher to refresh cache when files change
   const { setIsInitializing } = useFileWatcher(

@@ -1,12 +1,14 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { MediaItem } from "@/types/media_item.ts";
 import { Bookmark } from "@/types/bookmark.ts";
+import {MediaMetadata} from "@/hooks/useMediaMetadata.ts";
 
-// Interface matching the Rust VideoMetadata struct
+// Interface matching the Rust MediaMetadata struct
 interface VideoMetadata {
     id: number;
-    thumbnail_id: number;
     duration: number;
+    thumbnail_base64: string;
+    thumbnail_size: number;
 }
 
 // Interface matching the Rust MediaItemResponse struct
@@ -16,7 +18,7 @@ interface MediaItemResponse {
     title: string;
     media_type: string;
     length: number | null;
-    thumbnail_id: number | null; // ID of the thumbnail in the thumbnails table
+    thumbnail_base64: string;
     tags: string[];
     bookmarks: Bookmark[];
 }
@@ -28,17 +30,17 @@ interface MediaItemResponse {
 export async function getAllMedia(): Promise<MediaItem[]> {
     try {
         const response = await invoke<MediaItemResponse[]>('get_all_media');
-
+        console.log('res: ', response)
         // Convert the response to MediaItem objects
         return response.map(item => ({
             path: item.path,
             title: item.title,
             type: item.media_type as "image" | "video",
-            thumbnail: item.thumbnail_id ? `thumbnail://${item.thumbnail_id}` : null, // Use the thumbnail ID for the thumbnail URL
+            thumbnail_base64: item.thumbnail_base64,
             length: item.length,
             tags: item.tags,
             bookmarks: item.bookmarks
-        }));
+        } as MediaItem));
     } catch (error) {
         console.error('Error retrieving media from database:', error);
         return [];
@@ -81,9 +83,9 @@ export async function addBookmark(mediaId: number, description: string, timestam
  * @param path The path to the video file.
  * @returns Promise resolving to the video metadata.
  */
-export async function extractVideoMetadata(path: string): Promise<VideoMetadata> {
+export async function extractVideoMetadata(path: string): Promise<MediaMetadata> {
     try {
-        return await invoke<VideoMetadata>('extract_video_metadata', { path });
+        return await invoke<MediaMetadata>('extract_video_metadata', { path });
     } catch (error) {
         console.error(`Error extracting metadata from video ${path}:`, error);
         throw error;
@@ -95,9 +97,9 @@ export async function extractVideoMetadata(path: string): Promise<VideoMetadata>
  * @param path The path to the image file.
  * @returns Promise resolving to the image metadata.
  */
-export async function extractImageMetadata(path: string): Promise<VideoMetadata> {
+export async function extractImageMetadata(path: string): Promise<MediaMetadata> {
     try {
-        return await invoke<VideoMetadata>('extract_image_metadata', { path });
+        return await invoke<MediaMetadata>('extract_image_metadata', { path, size: 32 });
     } catch (error) {
         console.error(`Error extracting metadata from image ${path}:`, error);
         throw error;
@@ -134,16 +136,47 @@ export async function updateMediaItemPath(oldPath: string, newPath: string): Pro
 }
 
 /**
- * Gets a thumbnail by its ID.
- * @param thumbnailId The ID of the thumbnail.
+ * Gets a thumbnail by media ID and size.
+ * @param mediaId The ID of the media item.
+ * @param size The size of the thumbnail.
  * @returns Promise resolving to a data URL containing the thumbnail image.
  */
-export async function getThumbnailById(thumbnailId: number): Promise<string> {
+export async function getThumbnail(mediaId: number, size: number): Promise<string> {
     try {
-        console.log(`Getting thumbnail by ID: ${thumbnailId}`);
-        return await invoke<string>('get_thumbnail_by_id', { thumbnailId });
+        console.log(`Getting thumbnail for media ID: ${mediaId}, size: ${size}`);
+        return await invoke<string>('get_thumbnail', { mediaId, size });
     } catch (error) {
-        console.error(`Error getting thumbnail by ID ${thumbnailId}:`, error);
+        console.error(`Error getting thumbnail for media ID ${mediaId}, size ${size}: ${error}`);
+        throw error;
+    }
+}
+
+/**
+ * Checks if a thumbnail exists for a media item at a specific size.
+ * @param mediaId The ID of the media item.
+ * @param size The size of the thumbnail.
+ * @returns Promise resolving to true if the thumbnail exists, false otherwise.
+ */
+export async function checkThumbnailExists(mediaId: number, size: number): Promise<boolean> {
+    try {
+        return await invoke<boolean>('check_thumbnail_exists', { mediaId, size });
+    } catch (error) {
+        console.error(`Error checking thumbnail for media ID ${mediaId}, size ${size}: ${error}`);
+        throw error;
+    }
+}
+
+/**
+ * Generates a thumbnail for a media item at a specific size.
+ * @param mediaId The ID of the media item.
+ * @param size The size of the thumbnail.
+ * @returns Promise resolving to a data URL containing the thumbnail image.
+ */
+export async function generateThumbnail(mediaId: number, size: number): Promise<string> {
+    try {
+        return await invoke<string>('generate_thumbnail', { mediaId, size });
+    } catch (error) {
+        console.error(`Error generating thumbnail for media ID ${mediaId}, size ${size}: ${error}`);
         throw error;
     }
 }

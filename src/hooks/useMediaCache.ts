@@ -1,10 +1,12 @@
 /**
  * Hook for managing media cache
  * Provides functions to update and access media items
+ * Uses useMediaDatabase for database operations
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { MediaItem } from '@/types/media_item';
-import { updateMediaCache } from '@/helpers/cacheHelper';
+import { useMediaDatabase, DatabaseOperation } from '@/hooks/useMediaDatabase';
+import { updateMediaCache, initializeDatabase as initDb } from '@/helpers/cacheHelper';
 
 /**
  * Cache action states
@@ -28,6 +30,29 @@ export function useMediaCache() {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [cacheAction, setCacheAction] = useState<CacheAction>(CacheAction.Idle);
 
+  // Use the database hook for database operations
+  const { 
+    operationState
+  } = useMediaDatabase();
+
+  // Map database operation state to cache action
+  useEffect(() => {
+    switch (operationState) {
+      case DatabaseOperation.Initializing:
+        setCacheAction(CacheAction.Initializing);
+        break;
+      case DatabaseOperation.Updating:
+        setCacheAction(CacheAction.Updating);
+        break;
+      case DatabaseOperation.Error:
+        setCacheAction(CacheAction.Error);
+        break;
+      case DatabaseOperation.Idle:
+        setCacheAction(CacheAction.Idle);
+        break;
+    }
+  }, [operationState]);
+
   /**
    * Refresh the media cache for a specific folder
    * @param {string} folderPath - Path to the folder to scan
@@ -35,17 +60,16 @@ export function useMediaCache() {
    */
   const refreshCache = useCallback(async (folderPath: string): Promise<MediaItem[]> => {
     try {
-      setCacheAction(CacheAction.Updating);
+      // Use the existing updateMediaCache function for now
+      // In a future update, this could be replaced with scanDirectory
       const items = await updateMediaCache(folderPath);
       setMediaItems(items);
-      setCacheAction(CacheAction.Idle);
       return items;
     } catch (error) {
       console.error("Error updating media cache:", error);
-      setCacheAction(CacheAction.Error);
       throw error;
     }
-  }, [setCacheAction, setMediaItems]);
+  }, [setMediaItems]);
 
   /**
    * Initialize the media cache for a new folder
@@ -54,17 +78,19 @@ export function useMediaCache() {
    */
   const initializeCache = useCallback(async (folderPath: string): Promise<MediaItem[]> => {
     try {
-      setCacheAction(CacheAction.Initializing);
+      // Initialize the database
+      await initDb(folderPath);
+
+      // Use the existing updateMediaCache function for now
+      // In a future update, this could be replaced with scanDirectory
       const items = await updateMediaCache(folderPath);
       setMediaItems(items);
-      setCacheAction(CacheAction.Idle);
       return items;
     } catch (error) {
       console.error("Error initializing media cache:", error);
-      setCacheAction(CacheAction.Error);
       throw error;
     }
-  }, [setCacheAction, setMediaItems]);
+  }, [setMediaItems]);
 
   /**
    * Text descriptions for cache action states

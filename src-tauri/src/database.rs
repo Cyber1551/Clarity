@@ -1,3 +1,4 @@
+use std::any::Any;
 use rusqlite::{Connection, Result, params};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -24,11 +25,12 @@ pub fn init_db(db_path: &Path) -> Result<Connection> {
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS thumbnails (
-            id INTEGER PRIMARY KEY,
-            media_id INTEGER,
-            data BLOB,
+            media_id INTEGER NOT NULL,
+            size INTEGER NOT NULL,
+            data BLOB NOT NULL,
             mime_type TEXT,
-            FOREIGN KEY (media_id) REFERENCES media_items(id)
+            PRIMARY KEY (media_id, size),
+            FOREIGN KEY (media_id) REFERENCES media_items(id) ON DELETE CASCADE
         )",
         [],
     )?;
@@ -99,8 +101,8 @@ pub fn insert_media_item(conn: &Connection, item: &MediaItem) -> Result<i64> {
 /// Get a media item by its path
 pub fn get_media_item_by_path(conn: &Connection, path: &str) -> Result<Option<MediaItem>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, title, type, length, created_at, updated_at 
-         FROM media_items 
+        "SELECT id, path, title, type, length, created_at, updated_at
+         FROM media_items
          WHERE path = ?1"
     )?;
 
@@ -123,10 +125,35 @@ pub fn get_media_item_by_path(conn: &Connection, path: &str) -> Result<Option<Me
     }
 }
 
+/// Get a media item by its ID
+pub fn get_media_item_by_id(conn: &Connection, id: i64) -> Result<Option<MediaItem>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, path, title, type, length, created_at, updated_at
+         FROM media_items
+         WHERE id = ?1"
+    )?;
+
+    let mut rows = stmt.query(params![id])?;
+
+    if let Some(row) = rows.next()? {
+        Ok(Some(MediaItem {
+            id: Some(row.get(0)?),
+            path: row.get(1)?,
+            title: row.get(2)?,
+            media_type: row.get(3)?,
+            length: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Get all media items from the database
 pub fn get_all_media_items(conn: &Connection) -> Result<Vec<MediaItem>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, title, type, length, created_at, updated_at 
+        "SELECT id, path, title, type, length, created_at, updated_at
          FROM media_items"
     )?;
 
@@ -156,36 +183,35 @@ pub fn get_all_media_items(conn: &Connection) -> Result<Vec<MediaItem>> {
 // Thumbnail CRUD operations
 
 /// Insert a new thumbnail into the database
-pub fn insert_thumbnail(conn: &Connection, thumbnail: &Thumbnail) -> Result<i64> {
+pub fn insert_thumbnail(conn: &Connection, thumbnail: &Thumbnail) -> Result<()> {
     conn.execute(
-        "INSERT INTO thumbnails (media_id, data, mime_type)
-         VALUES (?1, ?2, ?3)",
+        "INSERT OR REPLACE INTO thumbnails (media_id, size, data, mime_type)
+         VALUES (?1, ?2, ?3, ?4)",
         params![
             thumbnail.media_id,
+            thumbnail.size,
             thumbnail.data,
             thumbnail.mime_type
         ],
     )?;
 
-    Ok(conn.last_insert_rowid())
+    Ok(())
 }
 
 /// Get a thumbnail by its media ID
-pub fn get_thumbnail_by_media_id(conn: &Connection, media_id: i64) -> Result<Option<Thumbnail>> {
+pub fn get_thumbnail_by_media_id(conn: &Connection, media_id: i64, size: i32) -> Result<Option<Thumbnail>> {
     let mut stmt = conn.prepare(
-        "SELECT id, media_id, data, mime_type 
-         FROM thumbnails 
-         WHERE media_id = ?1"
+        "SELECT media_id, size, data, mime_type
+         FROM thumbnails
+         WHERE media_id = ?1 and size = ?2"
     )?;
 
-    let mut rows = stmt.query(params![media_id])?;
+    let mut rows = stmt.query(params![media_id, size])?;
 
     if let Some(row) = rows.next()? {
-        let id: i64 = row.get(0)?;
-
         Ok(Some(Thumbnail {
-            id: Some(id),
-            media_id: row.get(1)?,
+            media_id: row.get(0)?,
+            size: row.get(1)?,
             data: row.get(2)?,
             mime_type: row.get(3)?,
         }))
@@ -195,28 +221,28 @@ pub fn get_thumbnail_by_media_id(conn: &Connection, media_id: i64) -> Result<Opt
 }
 
 /// Get a thumbnail by its ID
-pub fn get_thumbnail_by_id(conn: &Connection, thumbnail_id: i64) -> Result<Option<Thumbnail>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, media_id, data, mime_type 
-         FROM thumbnails 
-         WHERE id = ?1"
-    )?;
-
-    let mut rows = stmt.query(params![thumbnail_id])?;
-
-    if let Some(row) = rows.next()? {
-        let id: i64 = row.get(0)?;
-
-        Ok(Some(Thumbnail {
-            id: Some(id),
-            media_id: row.get(1)?,
-            data: row.get(2)?,
-            mime_type: row.get(3)?,
-        }))
-    } else {
-        Ok(None)
-    }
-}
+// pub fn get_thumbnail_by_id(conn: &Connection, thumbnail_id: i64) -> Result<Option<Thumbnail>> {
+//     let mut stmt = conn.prepare(
+//         "SELECT id, media_id, data, mime_type
+//          FROM thumbnails
+//          WHERE id = ?1"
+//     )?;
+//
+//     let mut rows = stmt.query(params![thumbnail_id])?;
+//
+//     if let Some(row) = rows.next()? {
+//         let id: i64 = row.get(0)?;
+//
+//         Ok(Some(Thumbnail {
+//             id: Some(id),
+//             media_id: row.get(1)?,
+//             data: row.get(2)?,
+//             mime_type: row.get(3)?,
+//         }))
+//     } else {
+//         Ok(None)
+//     }
+// }
 
 // Tag CRUD operations
 
@@ -256,7 +282,7 @@ pub fn get_tag_by_name(conn: &Connection, name: &str) -> Result<Option<Tag>> {
 /// Get all tags for a media item
 pub fn get_tags_for_media(conn: &Connection, media_id: i64) -> Result<Vec<Tag>> {
     let mut stmt = conn.prepare(
-        "SELECT t.id, t.name 
+        "SELECT t.id, t.name
          FROM tags t
          JOIN media_tags mt ON t.id = mt.tag_id
          WHERE mt.media_id = ?1"
@@ -307,8 +333,8 @@ pub fn insert_bookmark(conn: &Connection, bookmark: &Bookmark) -> Result<i64> {
 /// Get all bookmarks for a media item
 pub fn get_bookmarks_for_media(conn: &Connection, media_id: i64) -> Result<Vec<Bookmark>> {
     let mut stmt = conn.prepare(
-        "SELECT id, media_id, description, timestamp 
-         FROM bookmarks 
+        "SELECT id, media_id, description, timestamp
+         FROM bookmarks
          WHERE media_id = ?1"
     )?;
 

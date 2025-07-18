@@ -12,7 +12,7 @@ import { exists } from '@tauri-apps/api/fs';
  * Initialize the database in the specified folder
  * @param {string} folderPath - Path to the folder where the database should be initialized
  */
-async function initializeDatabase(folderPath: string): Promise<void> {
+export async function initializeDatabase(folderPath: string): Promise<void> {
   try {
     await invoke('init_database', { folderPath });
   } catch (error) {
@@ -103,7 +103,7 @@ async function processMediaFiles(scannedItems: MediaItem[]): Promise<{
     if (item.type === 'video') {
       try {
         // Extract metadata and store in database
-        const result = await extractVideoMetadata(item.path);
+        await extractVideoMetadata(item.path);
         processedVideoCount++;
       } catch (error) {
         console.error(`Error processing video ${item.path}:`, error);
@@ -111,7 +111,7 @@ async function processMediaFiles(scannedItems: MediaItem[]): Promise<{
     } else if (item.type === 'image') {
       try {
         // Extract metadata and store in database
-        const result = await extractImageMetadata(item.path);
+        await extractImageMetadata(item.path);
         processedImageCount++;
       } catch (error) {
         console.error(`Error processing image ${item.path}:`, error);
@@ -129,20 +129,17 @@ async function processMediaFiles(scannedItems: MediaItem[]): Promise<{
  * @returns {Promise<MediaItem[]>} The array of MediaItem objects from the database
  */
 export async function updateMediaCache(folder: string): Promise<MediaItem[]> {
-  // Initialize the database
-  await initializeDatabase(folder);
-
   // Get all existing media items from the database
   const existingItems = await getAllMedia();
 
   // Create maps for quick lookup
-  const { byPath: existingItemsMap, byFilename: existingItemsByFilename } = createMediaItemMaps(existingItems);
+  const { byPath: existingItemsMap } = createMediaItemMaps(existingItems);
 
   // Scan the directory for media files
   const scannedItems = await scanDirectory(folder);
 
   // Create maps for quick lookup
-  const { byPath: scannedItemsMap, byFilename: scannedItemsByFilename } = createMediaItemMaps(scannedItems);
+  const { byFilename: scannedItemsByFilename } = createMediaItemMaps(scannedItems);
 
   // Handle deleted and renamed files
   await handleDeletedAndRenamedFiles(existingItems, existingItemsMap, scannedItemsByFilename);

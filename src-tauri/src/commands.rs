@@ -1,4 +1,5 @@
-use crate::models::{VideoMetadata, MediaItemResponse, Bookmark, Tag};
+use base64::Engine;
+use crate::models::{MediaMetadata, MediaItemResponse, Bookmark, Tag};
 use crate::state;
 use crate::media;
 use crate::database;
@@ -11,7 +12,7 @@ pub async fn init_database(folder_path: String) -> Result<(), String> {
 
 /// Extract metadata from a video file, including generating a thumbnail
 #[tauri::command]
-pub async fn extract_video_metadata(path: String) -> Result<VideoMetadata, String> {
+pub async fn extract_video_metadata(path: String) -> Result<MediaMetadata, String> {
     // Get the database path
     let db_path = state::get_db_path()?;
 
@@ -25,7 +26,7 @@ pub async fn extract_video_metadata(path: String) -> Result<VideoMetadata, Strin
 
 /// Extract metadata from an image file, including generating a thumbnail
 #[tauri::command]
-pub async fn extract_image_metadata(path: String) -> Result<VideoMetadata, String> {
+pub async fn extract_image_metadata(path: String, size: i32) -> Result<MediaMetadata, String> {
     // Get the database path
     let db_path = state::get_db_path()?;
 
@@ -34,7 +35,7 @@ pub async fn extract_image_metadata(path: String) -> Result<VideoMetadata, Strin
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Call the media function with the new connection
-    media::extract_image_metadata(&path, conn).await
+    media::extract_image_metadata(&path, size, conn).await
 }
 
 /// Get all media items
@@ -65,9 +66,17 @@ pub async fn get_all_media() -> Result<Vec<MediaItemResponse>, String> {
         let bookmarks = database::get_bookmarks_for_media(&conn, media_id)
             .map_err(|e| format!("Failed to get bookmarks: {}", e))?;
 
-        // Get the thumbnail ID for this media item
-        let thumbnail_id = match database::get_thumbnail_by_media_id(&conn, media_id) {
-            Ok(Some(thumbnail)) => Some(thumbnail.id.unwrap()),
+        // Get the thumbnail as a Base64 image string
+        let thumbnail_base64 = match database::get_thumbnail_by_media_id(&conn, media_id, 32) {
+            Ok(Some(thumbnail)) => {
+                match (&thumbnail.data, &thumbnail.mime_type) {
+                    (data, mime_type) => {
+                        let base64_data = base64::engine::general_purpose::STANDARD.encode(data);
+                        Some(format!("data:{};base64,{}", mime_type, base64_data))
+                    }
+                    _ => None,
+                }
+            }
             _ => None,
         };
 
@@ -78,10 +87,11 @@ pub async fn get_all_media() -> Result<Vec<MediaItemResponse>, String> {
             title: media_item.title,
             media_type: media_item.media_type,
             length: media_item.length,
-            thumbnail_id,
+            thumbnail_base64,
             tags: tags.iter().map(|t| t.name.clone()).collect(),
             bookmarks,
         };
+
 
         response_items.push(response_item);
     }
@@ -174,9 +184,9 @@ pub async fn update_media_item_path(old_path: String, new_path: String) -> Resul
     Ok(result)
 }
 
-/// Get a thumbnail by ID
+/// Check if a thumbnail exists at a specific size
 #[tauri::command]
-pub async fn get_thumbnail_by_id(thumbnail_id: i64) -> Result<String, String> {
+pub async fn check_thumbnail_exists(media_id: i64, size: i32) -> Result<bool, String> {
     // Get the database path
     let db_path = state::get_db_path()?;
 
@@ -184,7 +194,67 @@ pub async fn get_thumbnail_by_id(thumbnail_id: i64) -> Result<String, String> {
     let conn = rusqlite::Connection::open(&db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
-    // Get the thumbnail as a data URL
-    media::get_thumbnail_as_data_url(conn, thumbnail_id)
+    // Check if the thumbnail exists
+    let thumbnail = database::get_thumbnail_by_media_id(&conn, media_id, size)
+        .map_err(|e| format!("Failed to check thumbnail: {}", e))?;
+
+    Ok(thumbnail.is_some())
 }
 
+/// Get a thumbnail at a specific size
+#[tauri::command]
+pub async fn get_thumbnail(media_id: i64, size: i32) -> Result<String, String> {
+    // Get the database path
+    let db_path = state::get_db_path()?;
+
+    // Open a new connection for this operation
+    let conn = rusqlite::Connection::open(&db_path)
+        .map_err(|e| format!("Failed to open database: {}", e))?;
+
+    // Get the thumbnail
+    let thumbnail = database::get_thumbnail_by_media_id(&conn, media_id, size)
+        .map_err(|e| format!("Failed to get thumbnail: {}", e))?
+        .ok_or_else(|| format!("Thumbnail not found for media_id: {}", media_id))?;
+
+    // Convert to base64
+    let base64_data = base64::engine::general_purpose::STANDARD.encode(&thumbnail.data);
+
+    // Create a data URL
+    let data_url = format!("data:{};base64,{}", thumbnail.mime_type, base64_data);
+
+    Ok(data_url)
+}
+
+/// Generate a thumbnail at a specific size
+#[tauri::command]
+pub async fn generate_thumbnail(media_id: i64, size: i32) -> Result<String, String> {
+    // Get the database path
+    let db_path = state::get_db_path()?;
+
+    // Open a new connection for this operation
+    let conn = rusqlite::Connection::open(&db_path)
+        .map_err(|e| format!("Failed to open database: {}", e))?;
+
+    // Get the media item
+    let media_item = database::get_media_item_by_id(&conn, media_id)
+        .map_err(|e| format!("Failed to get media item: {}", e))?
+        .ok_or_else(|| format!("Media item not found: {}", media_id))?;
+
+    // Generate the thumbnail
+    if media_item.media_type == "video" {
+        media::generate_video_thumbnail(&media_item.path, size, media_id, conn).await
+    } else {
+        media::generate_image_thumbnail(&media_item.path, size, media_id, conn).await
+    }
+}
+
+/// Scan a directory for media files and process them
+/// This is a simplified version that delegates to the existing functions
+#[tauri::command]
+pub async fn scan_directory(folder_path: String) -> Result<(), String> {
+    // For now, we'll just call the existing init_database function
+    // In a real implementation, this would scan the directory and process media files
+    init_database(folder_path).await?;
+
+    Ok(())
+}
