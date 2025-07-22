@@ -2,9 +2,8 @@
  * MediaItemCard component for displaying individual media items
  * Handles both image and video items with thumbnails
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { MediaItem } from '@/types/media_item';
-import { useThumbnail } from '@/hooks/useThumbnail';
 
 interface MediaItemCardProps {
   /**
@@ -17,22 +16,11 @@ interface MediaItemCardProps {
  * Component for displaying an individual media item card
  */
 const MediaItemCard: React.FC<MediaItemCardProps> = ({ item }) => {
-  // Default thumbnail size
-  const thumbnailSize = 64;
-
-  // Extract the media ID from the item
-  // In a real implementation, you would get this from the item object
-  // For now, we'll parse it from the path as a workaround
-  const [mediaId] = useState<number>(() => {
-    // This is a temporary solution - in a real app, the mediaId would be part of the MediaItem
-    // For now, we'll use a hash of the path to simulate an ID
-    return Math.abs(item.path.split('').reduce((acc, char) => {
-      return acc + char.charCodeAt(0);
-    }, 0));
-  });
-
-  // Use the thumbnail hook to fetch the thumbnail
-  const { thumbnail, loading, error } = useThumbnail(mediaId, thumbnailSize);
+  // Thumbnails are now included directly in the media item
+  // No need to fetch them separately
+  const thumbnail = item.thumbnail_base64;
+  const loading = !thumbnail;
+  const error = null;
 
   return (
     <div className="border border-gray-200 rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow">

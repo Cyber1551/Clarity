@@ -98,7 +98,7 @@ pub async fn extract_video_metadata(
     };
 
     // Insert or update the thumbnail
-    let size = 32; // Default thumbnail size
+    let size = 256; // Standard thumbnail size
     let thumbnail = Thumbnail {
         media_id,
         size,
@@ -125,9 +125,11 @@ pub async fn extract_video_metadata(
 /// Extract metadata from an image file, including generating a thumbnail
 pub async fn extract_image_metadata(
      path: &str,
-     size: i32,
+     _size: i32, // Parameter kept for backward compatibility but not used
      conn: Connection
  ) -> Result<MediaMetadata, String> {
+     // Use standard thumbnail size
+     let size = 256;
      // Extract the filename from the path to use as the title
      let image_path = PathBuf::from(path);
      let title = image_path
@@ -218,10 +220,12 @@ pub async fn extract_image_metadata(
 /// Generate a thumbnail for a video at a specific size
 pub async fn generate_video_thumbnail(
     path: &str,
-    size: i32,
+    _size: i32, // Parameter kept for backward compatibility but not used
     media_id: i64,
     conn: Connection
 ) -> Result<String, String> {
+    // Use standard thumbnail size
+    let size = 256;
     // Generate a temporary thumbnail file name (this file will be created by ffmpeg)
     let temp_thumbnail_path = format!("{}.thumb.jpg", path);
 
@@ -277,10 +281,12 @@ pub async fn generate_video_thumbnail(
 /// Generate a thumbnail for an image at a specific size
 pub async fn generate_image_thumbnail(
     path: &str,
-    size: i32,
+    _size: i32, // Parameter kept for backward compatibility but not used
     media_id: i64,
     conn: Connection
 ) -> Result<String, String> {
+    // Use standard thumbnail size
+    let size = 256;
     // Determine the MIME type based on file extension
     let mime_type = if path.to_lowercase().ends_with(".jpg") || path.to_lowercase().ends_with(".jpeg") {
         "image/jpeg"

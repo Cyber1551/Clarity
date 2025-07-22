@@ -27,6 +27,7 @@ pub async fn extract_video_metadata(path: String) -> Result<MediaMetadata, Strin
 /// Extract metadata from an image file, including generating a thumbnail
 #[tauri::command]
 pub async fn extract_image_metadata(path: String, size: i32) -> Result<MediaMetadata, String> {
+    // Note: size parameter is kept for backward compatibility but a fixed size is used internally
     // Get the database path
     let db_path = state::get_db_path()?;
 
@@ -66,18 +67,41 @@ pub async fn get_all_media() -> Result<Vec<MediaItemResponse>, String> {
         let bookmarks = database::get_bookmarks_for_media(&conn, media_id)
             .map_err(|e| format!("Failed to get bookmarks: {}", e))?;
 
-        // Get the thumbnail as a Base64 image string
-        let thumbnail_base64 = match database::get_thumbnail_by_media_id(&conn, media_id, 32) {
+        // Get the thumbnail as a Base64 image string using the standard size (256px)
+        let thumbnail_base64 = match database::get_thumbnail_by_media_id(&conn, media_id, 256) {
             Ok(Some(thumbnail)) => {
-                match (&thumbnail.data, &thumbnail.mime_type) {
-                    (data, mime_type) => {
-                        let base64_data = base64::engine::general_purpose::STANDARD.encode(data);
-                        Some(format!("data:{};base64,{}", mime_type, base64_data))
-                    }
-                    _ => None,
-                }
+                // Thumbnail exists, encode it as base64
+                let base64_data = base64::engine::general_purpose::STANDARD.encode(&thumbnail.data);
+                Some(format!("data:{};base64,{}", thumbnail.mime_type, base64_data))
             }
-            _ => None,
+            _ => {
+                // Thumbnail doesn't exist, generate it
+                let media_item_clone = database::get_media_item_by_id(&conn, media_id)
+                    .map_err(|e| format!("Failed to get media item: {}", e))?
+                    .ok_or_else(|| format!("Media item not found: {}", media_id))?;
+                
+                // Generate the thumbnail based on media type
+                // Open a new connection for thumbnail generation
+                let db_path = state::get_db_path()?;
+                let thumbnail_conn = rusqlite::Connection::open(&db_path)
+                    .map_err(|e| format!("Failed to open database for thumbnail generation: {}", e))?;
+                
+                let thumbnail_data_url = if media_item_clone.media_type == "video" {
+                    media::generate_video_thumbnail(&media_item_clone.path, 256, media_id, thumbnail_conn)
+                        .await
+                        .map_err(|e| format!("Failed to generate video thumbnail: {}", e))?
+                } else {
+                    // Open another new connection for image thumbnail generation if needed
+                    let img_thumbnail_conn = rusqlite::Connection::open(&db_path)
+                        .map_err(|e| format!("Failed to open database for image thumbnail generation: {}", e))?;
+                    
+                    media::generate_image_thumbnail(&media_item_clone.path, 256, media_id, img_thumbnail_conn)
+                        .await
+                        .map_err(|e| format!("Failed to generate image thumbnail: {}", e))?
+                };
+                
+                Some(thumbnail_data_url)
+            }
         };
 
         // Create the response item
@@ -187,6 +211,7 @@ pub async fn update_media_item_path(old_path: String, new_path: String) -> Resul
 /// Check if a thumbnail exists at a specific size
 #[tauri::command]
 pub async fn check_thumbnail_exists(media_id: i64, size: i32) -> Result<bool, String> {
+    // Note: size parameter is kept for backward compatibility but a fixed size is used internally
     // Get the database path
     let db_path = state::get_db_path()?;
 
@@ -204,6 +229,7 @@ pub async fn check_thumbnail_exists(media_id: i64, size: i32) -> Result<bool, St
 /// Get a thumbnail at a specific size
 #[tauri::command]
 pub async fn get_thumbnail(media_id: i64, size: i32) -> Result<String, String> {
+    // Note: size parameter is kept for backward compatibility but a fixed size is used internally
     // Get the database path
     let db_path = state::get_db_path()?;
 
@@ -228,6 +254,7 @@ pub async fn get_thumbnail(media_id: i64, size: i32) -> Result<String, String> {
 /// Generate a thumbnail at a specific size
 #[tauri::command]
 pub async fn generate_thumbnail(media_id: i64, size: i32) -> Result<String, String> {
+    // Note: size parameter is kept for backward compatibility but a fixed size is used internally
     // Get the database path
     let db_path = state::get_db_path()?;
 
