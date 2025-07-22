@@ -5,7 +5,7 @@
 import { useEffect } from 'react';
 import { pickFolder } from "@/api/fsApi";
 import { useConfig } from "@/hooks/useConfig";
-import { useMediaCache, CacheAction } from "@/hooks/useMediaCache";
+import { useMediaCache } from "@/hooks/useMediaCache";
 import { useFileWatcher } from "@/hooks/useFileWatcher";
 import Header from "@/components/Header";
 import MainContent from "@/components/MainContent";

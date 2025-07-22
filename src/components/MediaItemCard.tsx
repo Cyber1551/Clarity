@@ -19,22 +19,14 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item }) => {
   // Thumbnails are now included directly in the media item
   // No need to fetch them separately
   const thumbnail = item.thumbnail_base64;
-  const loading = !thumbnail;
-  const error = null;
 
   return (
     <div className="border border-gray-200 rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* Thumbnail/Preview Section */}
       <div className="h-40 relative bg-gray-100">
-        {loading && (
+        {!thumbnail && (
           <div className="flex justify-center items-center h-full">
-            <p className="text-gray-500 text-sm">Loading...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex justify-center items-center h-full">
-            <p className="text-red-500 text-sm">{error}</p>
+            <p className="text-red-500 text-sm">Error displaying thumbnail</p>
           </div>
         )}
 
