@@ -12,21 +12,37 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fd4cacbb-9369-4ce5-8fef-3af72024c6de" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/src/constants.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/image_helpers.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/media_helpers.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/types.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/video_helpers.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build.rs" beforeDir="false" afterPath="$PROJECT_DIR$/build.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/commands.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/database.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/database.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/media.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/media.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mod.rs" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/models.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/state.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/state.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/thumbnail.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/thumbnail.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/api/cacheApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/api/cacheApi.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../src/components/MediaItemCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../src/components/MediaItemCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../src/hooks/useMediaMetadata.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/hooks/useMediaMetadata.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../src/types/media_item.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/types/media_item.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/hooks/useMediaCache.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/hooks/useMediaCache.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Rust File" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -37,10 +53,10 @@
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 6
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 6
+}</component>
   <component name="ProjectId" id="300hl55HfAbye78T3oYS3fYuVdC" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -48,12 +64,13 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Cargo.clean.executor": "Run",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.rust.reset.selective.auto.import": "true",
-    "git-widget-placeholder": "custom-file-protocol",
+    "git-widget-placeholder": "efficiency-rewrite",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "C:/Users/brandon.lacy/Personal/VidTrack/src-tauri",
     "node.js.detected.package.eslint": "true",
@@ -79,6 +96,7 @@
       <updated>1752770546316</updated>
       <workItem from="1752770548521" duration="551000" />
       <workItem from="1752775625624" duration="5850000" />
+      <workItem from="1753713340003" duration="14879000" />
     </task>
     <servers />
   </component>

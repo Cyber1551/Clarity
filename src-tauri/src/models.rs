@@ -1,22 +1,23 @@
 use serde::{Serialize, Deserialize};
 
 /// Media item stored in the database
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaItem {
-    pub id: Option<i64>,
+    pub id: i64,
     pub path: String,
-    pub title: String,
+    pub file_name: String,
+    pub file_size: u64,
+    pub file_extension: String,
     pub media_type: String,
-    pub length: Option<i64>,
+    pub video_length: Option<f64>,
     pub created_at: i64,
     pub updated_at: i64,
 }
 
 /// Thumbnail stored in the database
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Thumbnail {
     pub media_id: i64,
-    pub size: i32,
     pub data: Vec<u8>,
     pub mime_type: String,
 }
@@ -47,16 +48,12 @@ pub struct MediaMetadata {
 }
 
 
-
-/// Media item response returned to the frontend
+/// Statistics about the media cache update process
 #[derive(Serialize, Deserialize)]
-pub struct MediaItemResponse {
-    pub id: i64,
-    pub path: String,
-    pub title: String,
-    pub media_type: String,
-    pub length: Option<i64>,
-    pub thumbnail_base64: Option<String>,
-    pub tags: Vec<String>,
-    pub bookmarks: Vec<Bookmark>,
+pub struct UpdateStats {
+    pub scanned_count: i32,
+    pub deleted_count: i32,
+    pub renamed_count: i32,
+    pub processed_video_count: i32,
+    pub processed_image_count: i32,
 }

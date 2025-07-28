@@ -3,6 +3,15 @@ import { MediaItem } from "@/types/media_item.ts";
 import { Bookmark } from "@/types/bookmark.ts";
 import {MediaMetadata} from "@/hooks/useMediaMetadata.ts";
 
+// Interface matching the Rust UpdateStats struct
+interface UpdateStats {
+    scanned_count: number;
+    deleted_count: number;
+    renamed_count: number;
+    processed_video_count: number;
+    processed_image_count: number;
+}
+
 // Interface matching the Rust MediaMetadata struct
 interface VideoMetadata {
     id: number;
@@ -177,6 +186,20 @@ export async function generateThumbnail(mediaId: number, size: number): Promise<
         return await invoke<string>('generate_thumbnail', { mediaId, size });
     } catch (error) {
         console.error(`Error generating thumbnail for media ID ${mediaId}, size ${size}: ${error}`);
+        throw error;
+    }
+}
+
+/**
+ * Updates the media cache by scanning a directory and updating the database.
+ * @param folder The folder to scan.
+ * @returns Promise resolving to statistics about what was updated.
+ */
+export async function updateMediaCache(folder: string): Promise<UpdateStats> {
+    try {
+        return await invoke<UpdateStats>('update_media_cache', { folder_path: folder });
+    } catch (error) {
+        console.error(`Error updating media cache for folder ${folder}: ${error}`);
         throw error;
     }
 }

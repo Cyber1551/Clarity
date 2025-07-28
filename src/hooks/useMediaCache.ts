@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { MediaItem } from '@/types/media_item';
 import { useMediaDatabase, DatabaseOperation } from '@/hooks/useMediaDatabase';
-import { updateMediaCache, initializeDatabase as initDb } from '@/helpers/cacheHelper';
+import { updateMediaCache } from '@/api/cacheApi';
 
 /**
  * Cache action states
@@ -32,7 +32,9 @@ export function useMediaCache() {
 
   // Use the database hook for database operations
   const { 
-    operationState
+    operationState,
+    initializeDatabase,
+    getMediaItems
   } = useMediaDatabase();
 
   // Map database operation state to cache action
@@ -60,9 +62,12 @@ export function useMediaCache() {
    */
   const refreshCache = useCallback(async (folderPath: string): Promise<MediaItem[]> => {
     try {
-      // Use the existing updateMediaCache function for now
-      // In a future update, this could be replaced with scanDirectory
-      const items = await updateMediaCache(folderPath);
+      // Update the media cache using the Rust implementation
+      const stats = await updateMediaCache(folderPath);
+      console.log("Media cache updated:", stats);
+      
+      // Get the updated media items
+      const items = await getAllMedia();
       setMediaItems(items);
       return items;
     } catch (error) {
@@ -79,11 +84,14 @@ export function useMediaCache() {
   const initializeCache = useCallback(async (folderPath: string): Promise<MediaItem[]> => {
     try {
       // Initialize the database
-      await initDb(folderPath);
+      await initializeDatabase(folderPath);
 
-      // Use the existing updateMediaCache function for now
-      // In a future update, this could be replaced with scanDirectory
-      const items = await updateMediaCache(folderPath);
+      // Update the media cache using the Rust implementation
+      const stats = await updateMediaCache(folderPath);
+      console.log("Media cache initialized:", stats);
+      
+      // Get the updated media items
+      const items = await getMediaItems();
       setMediaItems(items);
       return items;
     } catch (error) {
