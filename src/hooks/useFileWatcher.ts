@@ -4,7 +4,6 @@
  */
 import { useEffect, useRef, useCallback } from 'react';
 import { watch } from 'tauri-plugin-fs-watch-api';
-import { debounce } from 'lodash-es';
 import { isImageFile, isVideoFile } from '@/helpers/mediaHelper';
 
 /**
@@ -33,24 +32,13 @@ interface UseFileWatcherOptions {
  */
 export function useFileWatcher(
   folderPath: string | null,
-  onChange: () => Promise<void>,
+  onChange: (res: string[]) => Promise<void>,
   options: UseFileWatcherOptions = {}
 ) {
   // Default options
   const {
     recursive = true,
-    debounceDelay = 300,
-    ignorePaths = [
-      '.mediaCache.json', 
-      '.thumbnails', 
-      'media_cache.db',
-      'cache',
-      'thumbnail',
-      '.db',
-      '.db-journal',
-      '.db-shm',
-      '.db-wal'
-    ]
+    debounceDelay = 300
   } = options;
 
   // Use a ref to store the cleanup function
@@ -61,15 +49,12 @@ export function useFileWatcher(
   const isInitializingRef = useRef<boolean>(false);
 
   // Create a debounced version of the onChange callback
-  const debouncedOnChange = useCallback(
-    debounce(async () => {
+  const guardedOnChange = useCallback(async (relevantChanges: string[]) => {
       // Only trigger the onChange callback if we're not currently initializing the cache
       if (!isInitializingRef.current) {
-        await onChange();
+        await onChange(relevantChanges);
       }
-    }, debounceDelay),
-    [onChange, debounceDelay]
-  );
+    }, [onChange]);
 
   // Method to set the initializing flag
   const setIsInitializing = useCallback((isInitializing: boolean) => {
@@ -85,29 +70,6 @@ export function useFileWatcher(
     const isRelevantChange = (path: string): boolean => {
       // Get the filename from the path
       const fileName = path.split('\\').pop() || '';
-
-      // Check if the file or directory should be ignored
-      // Ignore specific file extensions
-      if (fileName.endsWith('.db') || 
-          fileName.endsWith('.db-journal') || 
-          fileName.endsWith('.db-shm') || 
-          fileName.endsWith('.db-wal') ||
-          fileName === '.mediaCache.json' ||
-          fileName === 'media_cache.db') {
-        return false;
-      }
-
-      // Ignore specific directories
-      if (path.includes('\\.thumbnails\\') || 
-          path.includes('\\cache\\') ||
-          path.includes('\\thumbnails\\')) {
-        return false;
-      }
-
-      // Check if any of the ignore patterns match
-      if (ignorePaths.some(ignorePath => path.includes(ignorePath))) {
-        return false;
-      }
 
       // Check if it's an image or video file
       if (isImageFile(fileName) || isVideoFile(fileName)) {
@@ -128,22 +90,18 @@ export function useFileWatcher(
           async (events) => {
             if (events.length === 0) return;
 
-            // Check if any of the events should be ignored
-            if (events.some(event => 
-              ignorePaths.some(ignorePath => event.path.includes(ignorePath))
-            )) {
-              return;
-            }
-
             // Check if any of the changed files are relevant
-            const relevantChanges = events.filter(event => isRelevantChange(event.path));
+            const relevantChanges = events
+                .filter(event => isRelevantChange(event.path))
+                .map(event => event.path);
 
             if (relevantChanges.length === 0) {
               return;
             }
-            await debouncedOnChange();
+
+            await guardedOnChange(relevantChanges);
           },
-          { recursive }
+          { recursive: true, delayMs: debounceDelay }
         );
       } catch (error) {
         console.error("Error setting up file watcher:", error);
@@ -156,10 +114,8 @@ export function useFileWatcher(
         stopWatchingRef.current();
         stopWatchingRef.current = null;
       }
-
-      debouncedOnChange.cancel();
     };
-  }, [folderPath, debouncedOnChange, recursive, ignorePaths]);
+  }, [debounceDelay, folderPath, guardedOnChange, recursive]);
 
   // Return the setIsInitializing method to allow external components to control the flag
   return { setIsInitializing };

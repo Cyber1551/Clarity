@@ -19,19 +19,16 @@ function App() {
 
   const { mediaItems, cacheAction, initializeCache, cacheActionText } = useMediaCache();
 
-  useEffect(() => {
-    console.log(mediaItems)
-  }, [mediaItems]);
-
   // Set up file watcher to refresh cache when files change
   const { setIsInitializing } = useFileWatcher(
     config.folderPath,
-    async () => {
+    async (res) => {
       if (config.folderPath) {
         try {
+          res.toString();
           // Set the flag to prevent file watcher from triggering during refresh
           setIsInitializing(true);
-
+          //console.log("123: ", res);
           // Refresh the cache
           //await refreshCache(config.folderPath);
         } catch (error) {
