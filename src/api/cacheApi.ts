@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { MediaItem } from "@/types/media_item.ts";
-import { Bookmark } from "@/types/bookmark.ts";
 import {MediaMetadata} from "@/hooks/useMediaMetadata.ts";
 
 // Interface matching the Rust UpdateStats struct
@@ -13,23 +12,23 @@ interface UpdateStats {
 }
 
 // Interface matching the Rust MediaMetadata struct
-interface VideoMetadata {
-    id: number;
-    duration: number;
-    thumbnail_base64: string;
-    thumbnail_size: number;
-}
+// interface VideoMetadata {
+//     id: number;
+//     duration: number;
+//     thumbnail_base64: string;
+//     thumbnail_size: number;
+// }
 
 // Interface matching the Rust MediaItemResponse struct
 interface MediaItemResponse {
     id: number;
     path: string;
-    title: string;
+    file_name: string;
+    file_size: number;
+    file_extension: string;
     media_type: string;
-    length: number | null;
+    video_length: number;
     thumbnail_base64: string;
-    tags: string[];
-    bookmarks: Bookmark[];
 }
 
 /**
@@ -38,17 +37,17 @@ interface MediaItemResponse {
  */
 export async function getAllMedia(): Promise<MediaItem[]> {
     try {
-        const response = await invoke<MediaItemResponse[]>('get_all_media');
+        const response = await invoke<MediaItemResponse[]>('get_media_items');
         console.log('res: ', response)
         // Convert the response to MediaItem objects
         return response.map(item => ({
             path: item.path,
-            title: item.title,
+            title: item.file_name,
             type: item.media_type as "image" | "video",
             thumbnail_base64: item.thumbnail_base64,
-            length: item.length,
-            tags: item.tags,
-            bookmarks: item.bookmarks
+            length: item.video_length,
+            tags: [],
+            bookmarks: []
         } as MediaItem));
     } catch (error) {
         console.error('Error retrieving media from database:', error);

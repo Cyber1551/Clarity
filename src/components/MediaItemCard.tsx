@@ -21,7 +21,7 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item }) => {
   const thumbnail = item.thumbnail_base64;
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <div className="border border-gray-200 rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow max-w-[178px] max-h-[224px]">
       {/* Thumbnail/Preview Section */}
       <div className="h-40 relative bg-gray-100">
         {!thumbnail && (

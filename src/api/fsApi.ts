@@ -3,9 +3,6 @@
  * Provides functions for interacting with the file system
  */
 import { open } from "@tauri-apps/api/dialog";
-import { readDir, FileEntry } from '@tauri-apps/api/fs';
-import { MediaItem } from "@/types/media_item";
-import { isImageFile, isVideoFile } from "@/helpers/mediaHelper";
 import { withErrorHandling } from "@/utils/apiUtils";
 
 /**
@@ -36,88 +33,88 @@ export async function pickFolder(): Promise<string | null> {
  * @param {string} path - Path to check
  * @returns {boolean} True if the directory should be skipped
  */
-function shouldSkipDirectory(path: string): boolean {
-  const skipPatterns = [
-    ".thumbnails",
-    "node_modules",
-    ".git",
-    ".vscode"
-  ];
-
-  return skipPatterns.some(pattern => path.includes(pattern));
-}
+// function shouldSkipDirectory(path: string): boolean {
+//   const skipPatterns = [
+//     ".thumbnails",
+//     "node_modules",
+//     ".git",
+//     ".vscode"
+//   ];
+//
+//   return skipPatterns.some(pattern => path.includes(pattern));
+// }
 
 /**
  * Creates a MediaItem object from a file entry
  * @param {FileEntry} entry - File entry from readDir
  * @returns {MediaItem|null} MediaItem object or null if not a media file
  */
-function createMediaItem(entry: FileEntry): MediaItem | null {
-  if (!entry.name) {
-    return null;
-  }
-
-  const isImage = isImageFile(entry.name);
-  const isVideo = isVideoFile(entry.name);
-
-  if (!isImage && !isVideo) {
-    return null;
-  }
-
-  const type = isImage ? 'image' : 'video';
-
-  return {
-    path: entry.path,
-    title: entry.name,
-    type,
-    length: type === 'video' ? 0 : null, // Use 0 as a placeholder for video length
-    thumbnail: null,
-    tags: [],
-    bookmarks: []
-  };
-}
+// function createMediaItem(entry: FileEntry): MediaItem | null {
+//   if (!entry.name) {
+//     return null;
+//   }
+//
+//   const isImage = isImageFile(entry.name);
+//   const isVideo = isVideoFile(entry.name);
+//
+//   if (!isImage && !isVideo) {
+//     return null;
+//   }
+//
+//   const type = isImage ? 'image' : 'video';
+//
+//   return {
+//     path: entry.path,
+//     title: entry.name,
+//     type,
+//     length: type === 'video' ? 0 : null, // Use 0 as a placeholder for video length
+//     thumbnail: null,
+//     tags: [],
+//     bookmarks: []
+//   };
+// }
 
 /**
  * Processes a directory entry (file or subdirectory)
  * @param {FileEntry} entry - Directory entry to process
  * @returns {Promise<MediaItem[]>} Array of media items found
  */
-async function processDirectoryEntry(entry: FileEntry): Promise<MediaItem[]> {
-  // If the entry is a directory, recursively scan it
-  if (entry.children) {
-    if (shouldSkipDirectory(entry.path)) {
-      return [];
-    }
-
-    return await scanDirectory(entry.path);
-  }
-
-  // Otherwise, it's a file. Check if it's a media file
-  const mediaItem = createMediaItem(entry);
-  return mediaItem ? [mediaItem] : [];
-}
+// async function processDirectoryEntry(entry: FileEntry): Promise<MediaItem[]> {
+//   // If the entry is a directory, recursively scan it
+//   if (entry.children) {
+//     if (shouldSkipDirectory(entry.path)) {
+//       return [];
+//     }
+//
+//     return await scanDirectory(entry.path);
+//   }
+//
+//   // Otherwise, it's a file. Check if it's a media file
+//   const mediaItem = createMediaItem(entry);
+//   return mediaItem ? [mediaItem] : [];
+// }
 
 /**
  * Recursively scans a directory for media files
  * @param {string} directory - The folder path to scan
  * @returns {Promise<MediaItem[]>} Array of MediaItem objects for each recognized media file
  */
-export async function scanDirectory(directory: string): Promise<MediaItem[]> {
-  try {
-    // Read the immediate entries (files and subdirectories) in the directory
-    const entries = await readDir(directory, { recursive: false });
-
-    // Process each entry and collect the results
-    const mediaItemArrays = await Promise.all(
-      entries.map(entry => processDirectoryEntry(entry))
-    );
-
-    // Flatten the array of arrays into a single array
-    const mediaItems = mediaItemArrays.flat();
-
-    return mediaItems;
-  } catch (error) {
-    console.error(`Error scanning directory ${directory}:`, error);
-    return [];
-  }
-}
+// export async function scanDirectory(directory: string): Promise<MediaItem[]> {
+//   try {
+//     // Read the immediate entries (files and subdirectories) in the directory
+//     const entries = await readDir(directory, { recursive: false });
+//
+//     // Process each entry and collect the results
+//     const mediaItemArrays = await Promise.all(
+//       entries.map(entry => processDirectoryEntry(entry))
+//     );
+//
+//     // Flatten the array of arrays into a single array
+//     const mediaItems = mediaItemArrays.flat();
+//
+//     return mediaItems;
+//   } catch (error) {
+//     console.error(`Error scanning directory ${directory}:`, error);
+//     return [];
+//   }
+// }

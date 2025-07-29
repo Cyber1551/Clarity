@@ -17,7 +17,7 @@ function App() {
   // Use custom hooks for configuration, media cache, and file watching
   const { config, updateConfig } = useConfig();
 
-  const { mediaItems, cacheAction, initializeCache, refreshCache, cacheActionText } = useMediaCache();
+  const { mediaItems, cacheAction, initializeCache, cacheActionText } = useMediaCache();
 
   useEffect(() => {
     console.log(mediaItems)
@@ -33,7 +33,7 @@ function App() {
           setIsInitializing(true);
 
           // Refresh the cache
-          await refreshCache(config.folderPath);
+          //await refreshCache(config.folderPath);
         } catch (error) {
           console.error("Error refreshing media cache:", error);
         } finally {

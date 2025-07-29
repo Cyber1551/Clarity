@@ -12,25 +12,45 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fd4cacbb-9369-4ce5-8fef-3af72024c6de" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/constants.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/image_helpers.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/media_helpers.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/types.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/video_helpers.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/broken_thumbnail.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bin/ffmpeg-aarch64-apple-darwin" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bin/ffprobe-aarch64-apple-darwin" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/app.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/app/commands.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/app/constants.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/database/media_items.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/database/schema.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/database/thumbnails.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/media/thumbnail.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/ffmpeg-x86_64-pc-windows-msvc.exe" beforeDir="false" afterPath="$PROJECT_DIR$/bin/ffmpeg-x86_64-pc-windows-msvc.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/ffprobe-x86_64-pc-windows-msvc.exe" beforeDir="false" afterPath="$PROJECT_DIR$/bin/ffprobe-x86_64-pc-windows-msvc.exe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build.rs" beforeDir="false" afterPath="$PROJECT_DIR$/build.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/commands.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/commands.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/constants.rs" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/database.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/database.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/db.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/image_helpers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/media/image.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/media.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/media.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/models.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/state.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/state.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/thumbnail.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/thumbnail.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/media_helpers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/media/helpers.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/database/models.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/state.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/state.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/thumbnail.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/types.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/video_helpers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/media/video.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../src/App.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/api/cacheApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/api/cacheApi.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/api/fsApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/api/fsApi.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/components/MediaItemCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../src/components/MediaItemCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/helpers/bookmarkHelper.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/helpers/cacheHelper.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/helpers/cacheHelper.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/helpers/tagHelper.ts" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/hooks/useMediaCache.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/hooks/useMediaCache.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/hooks/useMediaDatabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../src/hooks/useMediaDatabase.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,6 +78,9 @@
   &quot;associatedIndex&quot;: 6
 }</component>
   <component name="ProjectId" id="300hl55HfAbye78T3oYS3fYuVdC" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -72,18 +95,28 @@
     "RunOnceActivity.rust.reset.selective.auto.import": "true",
     "git-widget-placeholder": "efficiency-rewrite",
     "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "C:/Users/brandon.lacy/Personal/VidTrack/src-tauri",
+    "last_opened_file_path": "/Volumes/Development APFS/Projects/VidTrack/src-tauri",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
     "org.rust.first.attach.projects": "true",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "settings.editor.selected.configurable": "inlay.hints",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/media" />
+      <recent name="$PROJECT_DIR$/src/database" />
+      <recent name="$PROJECT_DIR$/src/app" />
+      <recent name="$PROJECT_DIR$/assets" />
+      <recent name="$PROJECT_DIR$/bin" />
+    </key>
+  </component>
   <component name="RustProjectSettings">
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
   </component>
@@ -97,10 +130,23 @@
       <workItem from="1752770548521" duration="551000" />
       <workItem from="1752775625624" duration="5850000" />
       <workItem from="1753713340003" duration="14879000" />
+      <workItem from="1753747318170" duration="1728000" />
+      <workItem from="1753749702069" duration="11544000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>

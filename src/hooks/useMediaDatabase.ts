@@ -2,7 +2,7 @@
  * Hook for database operations related to media
  * Provides functions for initializing, refreshing, and querying the media database
  */
-import { useState } from 'react';
+import {useCallback, useState} from 'react';
 import { MediaItem } from '@/types/media_item';
 import { getAllMedia } from '@/api/cacheApi';
 import { invoke } from '@tauri-apps/api/tauri';
@@ -30,10 +30,10 @@ export function useMediaDatabase() {
    * @param {string} folderPath - Path to the folder
    * @returns {Promise<void>}
    */
-  const initializeDatabase = async (folderPath: string): Promise<void> => {
+  const initializeDatabase = useCallback(async (folderPath: string): Promise<void> => {
     try {
       setOperationState(DatabaseOperation.Initializing);
-      await invoke('init_database', { folderPath });
+      await invoke('initialize_database', { folderPath });
       setOperationState(DatabaseOperation.Idle);
     } catch (error) {
       console.error("Error initializing database:", error);
@@ -41,7 +41,7 @@ export function useMediaDatabase() {
       setError(`Failed to initialize database: ${error}`);
       throw error;
     }
-  };
+  }, []);
 
   /**
    * Scan a directory and process all media files
@@ -53,7 +53,7 @@ export function useMediaDatabase() {
       setOperationState(DatabaseOperation.Updating);
       // This will be implemented in the cacheHelper.ts file
       // We'll call the existing updateMediaCache function
-      const items = await invoke('scan_directory', { folderPath });
+      await invoke('scan_directory', { folderPath });
       setOperationState(DatabaseOperation.Idle);
       return await getMediaItems();
     } catch (error) {
@@ -68,7 +68,7 @@ export function useMediaDatabase() {
    * Get all media items from the database
    * @returns {Promise<MediaItem[]>} Media items
    */
-  const getMediaItems = async (): Promise<MediaItem[]> => {
+  const getMediaItems = useCallback(async (): Promise<MediaItem[]> => {
     try {
       return await getAllMedia();
     } catch (error) {
@@ -76,7 +76,7 @@ export function useMediaDatabase() {
       setError(`Failed to get media items: ${error}`);
       throw error;
     }
-  };
+  }, []);
 
   /**
    * Text descriptions for database operation states

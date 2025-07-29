@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { MediaItem } from '@/types/media_item';
 import { useMediaDatabase, DatabaseOperation } from '@/hooks/useMediaDatabase';
-import { updateMediaCache } from '@/api/cacheApi';
+import {getAllMedia, updateMediaCache} from '@/api/cacheApi';
 
 /**
  * Cache action states
@@ -87,8 +87,8 @@ export function useMediaCache() {
       await initializeDatabase(folderPath);
 
       // Update the media cache using the Rust implementation
-      const stats = await updateMediaCache(folderPath);
-      console.log("Media cache initialized:", stats);
+      //const stats = await updateMediaCache(folderPath);
+      //console.log("Media cache initialized:", stats);
       
       // Get the updated media items
       const items = await getMediaItems();
@@ -98,7 +98,7 @@ export function useMediaCache() {
       console.error("Error initializing media cache:", error);
       throw error;
     }
-  }, [setMediaItems]);
+  }, [initializeDatabase, getMediaItems, setMediaItems]);
 
   /**
    * Text descriptions for cache action states
