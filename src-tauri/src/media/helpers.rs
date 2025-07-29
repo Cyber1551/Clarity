@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use base64::Engine;
-use crate::app::constants::THUMBNAIL_EXTENSION;
+use crate::core::constants::THUMBNAIL_EXTENSION;
 use crate::media::image;
 use crate::media::video;
 use crate::database::models::MediaItem;

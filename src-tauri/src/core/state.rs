@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use crate::app::constants::{DB_NAME, MAX_POOL_SIZE};
+use crate::core::constants::{DB_NAME, MAX_POOL_SIZE};
 use crate::database;
 
 #[derive(Clone)]

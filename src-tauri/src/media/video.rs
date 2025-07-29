@@ -1,6 +1,6 @@
 use std::fs;
 use tauri::api::process::Command;
-use crate::app::constants::{THUMBNAIL_EXTENSION, THUMBNAIL_SIZE};
+use crate::core::constants::{THUMBNAIL_EXTENSION, THUMBNAIL_SIZE};
 use crate::media;
 
 const VALID_VIDEO_EXTENSIONS: [&str; 7] = ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv"];

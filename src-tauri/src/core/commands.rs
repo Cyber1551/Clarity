@@ -1,8 +1,8 @@
 use tauri::State;
-use crate::app::state;
-use crate::app::state::AppState;
+use crate::core::state;
+use crate::core::state::AppState;
 use crate::{database, media};
-use crate::app::constants::BROKEN_THUMBNAIL;
+use crate::core::constants::BROKEN_THUMBNAIL;
 use crate::types::MediaItemResponse;
 
 /// Initialize the database with a specified folder path

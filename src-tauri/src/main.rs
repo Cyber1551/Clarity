@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::sync::{Arc, Mutex};
-use app::app::commands;
-use app::app::state::AppState;
+use app::core::commands;
+use app::core::state::AppState;
 
 fn main() {
     let state = AppState {
