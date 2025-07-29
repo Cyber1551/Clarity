@@ -1,11 +1,7 @@
 // src/VideoItem.tsx
 import React, { useEffect, useState } from 'react';
-import {convertFileSrc, invoke} from '@tauri-apps/api/tauri';
-
-interface VideoMetadata {
-    thumbnail: string; // Base64-encoded JPEG image
-    duration: number;  // Duration in seconds
-}
+import { extractVideoMetadata } from '@/api/cacheApi';
+import { MediaMetadata } from '@/hooks/useMediaMetadata';
 
 type Props = {
     videoPath: string;
@@ -13,22 +9,17 @@ type Props = {
 }
 
 const VideoItem: React.FC<Props> = ({ videoPath, title }) => {
-    const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
+    const [metadata, setMetadata] = useState<MediaMetadata | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchMetadata() {
             try {
-                // Call the Tauri command to extract video metadata
-                const result = await invoke<VideoMetadata>('extract_video_metadata', { path: videoPath });
-                console.log("RESULT: ", result)
-                const newMeta: VideoMetadata = {
-                    thumbnail: convertFileSrc(result.thumbnail),
-                    duration: result.duration
-                }
-                console.log("NEW: ", newMeta)
-                setMetadata(newMeta);
+                // Call the function to extract video metadata
+                const result = await extractVideoMetadata(videoPath);
+                console.log("Video metadata result:", result);
+                setMetadata(result);
             } catch (err) {
                 console.error('Error extracting video metadata:', err);
                 setError('Failed to extract metadata.');
@@ -47,7 +38,7 @@ const VideoItem: React.FC<Props> = ({ videoPath, title }) => {
             {metadata && (
                 <div>
                     <img
-                        src={`${metadata.thumbnail}`}
+                        src={metadata.thumbnail_base64}
                         alt={`${title} thumbnail`}
                         style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
                     />
