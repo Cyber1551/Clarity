@@ -42,7 +42,7 @@ pub async fn get_media_items(state: State<'_, AppState>) -> Result<Vec<MediaItem
 
             responses.push(MediaItemResponse {
                 id: media.id,
-                path: media.path,
+                path: String::from(media.path.to_string_lossy()),
                 file_name: media.file_name,
                 file_size: media.file_size,
                 file_extension: media.file_extension,
@@ -56,4 +56,11 @@ pub async fn get_media_items(state: State<'_, AppState>) -> Result<Vec<MediaItem
     }).await.map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
     
     Ok(response_items)
+}
+
+#[tauri::command]
+pub async fn build_cache(state: State<'_, AppState>) -> Result<(), String> {
+    println!("Building cache...");
+    let pool = state.get_pool()?;
+    Ok(())
 }

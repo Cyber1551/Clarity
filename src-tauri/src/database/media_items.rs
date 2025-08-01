@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection, Result};
 use crate::database::models::MediaItem;
 use crate::utils;
@@ -16,7 +16,7 @@ pub fn get_all_media_items(conn: &Connection) -> Result<Vec<MediaItem>> {
         println!("yo");
         Ok(MediaItem {
             id,
-            path,
+            path: PathBuf::from(path),
             file_name: row.get(2)?,
             file_size: row.get(3)?,
             file_extension: row.get(4)?,
@@ -46,9 +46,11 @@ pub fn get_media_item_by_id(conn: &Connection, id: i64) -> Result<Option<MediaIt
     let mut rows = stmt.query(params![id])?;
 
     if let Some(row) = rows.next()? {
+        let path = row.get(1)?;
+
         Ok(Some(MediaItem {
             id: row.get(0)?,
-            path: row.get(1)?,
+            path: PathBuf::from(String::from(path)),
             file_name: row.get(2)?,
             file_size: row.get(3)?,
             file_extension: row.get(4)?,
@@ -99,7 +101,7 @@ pub fn insert_media_item(conn: &Connection, item: &MediaItem) -> Result<i64> {
         "INSERT INTO media_items (path, file_name, file_size, file_extension, media_type, video_length, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
-            item.path,
+            item.path.to_string_lossy(),
             item.file_name,
             item.file_size,
             item.file_extension,

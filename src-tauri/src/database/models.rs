@@ -1,9 +1,10 @@
+use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaItem {
     pub id: i64,
-    pub path: String,
+    pub path: PathBuf,
     pub file_name: String,
     pub file_size: u64,
     pub file_extension: String,

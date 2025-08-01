@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use base64::Engine;
 use crate::core::constants::THUMBNAIL_EXTENSION;
 use crate::media::image;
@@ -26,7 +26,6 @@ pub fn get_file_size(path: &str) -> u64 {
         Err(_) => 0,
     }
 }
-
 
 pub fn generate_base64_from_image(image: Vec<u8>) -> String {
     // Convert to base64
@@ -57,7 +56,7 @@ fn create_media_item(id: i64, path: &str) -> Option<MediaItem> {
 
     Some(MediaItem {
         id,
-        path: path.to_string(),
+        path: PathBuf::from(path),
         file_name: file_name.to_string(),
         file_size,
         file_extension: file_extension.to_string(),
