@@ -7,6 +7,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { MediaItem } from '@/types/media_item';
 import { useMediaDatabase, DatabaseOperation } from '@/hooks/useMediaDatabase';
 import {getAllMedia, updateMediaCache} from '@/api/cacheApi';
+import {invoke} from "@tauri-apps/api/tauri";
 
 /**
  * Cache action states
@@ -85,7 +86,7 @@ export function useMediaCache() {
     try {
       // Initialize the database
       await initializeDatabase(folderPath);
-
+      await invoke('build_cache', { folderPath });
       // Update the media cache using the Rust implementation
       //const stats = await updateMediaCache(folderPath);
       //console.log("Media cache initialized:", stats);

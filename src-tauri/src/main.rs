@@ -15,7 +15,8 @@ fn main() {
         .manage(state)
         .invoke_handler(tauri::generate_handler![
           commands::initialize_database,
-          commands::get_media_items
+          commands::get_media_items,
+          commands::build_cache
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

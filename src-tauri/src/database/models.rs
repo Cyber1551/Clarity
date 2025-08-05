@@ -10,8 +10,9 @@ pub struct MediaItem {
     pub file_extension: String,
     pub media_type: String,
     pub video_length: Option<f64>,
+    pub hash: String,
     pub created_at: i64,
-    pub updated_at: i64,
+    pub updated_at: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

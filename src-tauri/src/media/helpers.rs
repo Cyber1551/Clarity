@@ -52,7 +52,7 @@ fn create_media_item(id: i64, path: &str) -> Option<MediaItem> {
 
     let media_type = if is_image { "image" } else { "video" };
     let length = video::get_video_duration(path);
-    let now = utils::get_current_timestamp();
+    //let now = utils::get_current_timestamp();
 
     Some(MediaItem {
         id,
@@ -62,7 +62,8 @@ fn create_media_item(id: i64, path: &str) -> Option<MediaItem> {
         file_extension: file_extension.to_string(),
         media_type: media_type.to_string(),
         video_length: length,
-        created_at: now,
-        updated_at: now,
+        hash: String::from(""),
+        created_at: 0,
+        updated_at: 0.0,
     })
 }

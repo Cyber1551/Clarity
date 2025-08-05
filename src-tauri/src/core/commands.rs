@@ -4,6 +4,7 @@ use crate::core::state::AppState;
 use crate::{database, media};
 use crate::core::constants::BROKEN_THUMBNAIL;
 use crate::types::MediaItemResponse;
+use crate::cache::builder;
 
 /// Initialize the database with a specified folder path
 #[tauri::command]
@@ -59,8 +60,15 @@ pub async fn get_media_items(state: State<'_, AppState>) -> Result<Vec<MediaItem
 }
 
 #[tauri::command]
-pub async fn build_cache(state: State<'_, AppState>) -> Result<(), String> {
+pub async fn build_cache(state: State<'_, AppState>, folder_path: String) -> Result<(), String> {
     println!("Building cache...");
     let pool = state.get_pool()?;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let conn = state::get_connection(&pool)?;
+        builder::build_cache(&conn, folder_path).map_err(|e| format!("Failed to build cache: {}", e))?;
+        Ok::<_, String>(())
+    }).await.map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
+
     Ok(())
 }
