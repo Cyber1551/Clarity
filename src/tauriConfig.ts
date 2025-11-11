@@ -4,7 +4,7 @@ import {
     readTextFile,
     writeTextFile,
     BaseDirectory,
-} from "@tauri-apps/api/fs";
+} from "@tauri-apps/plugin-fs";
 
 /**
  * Returns the full path to our config.json file.

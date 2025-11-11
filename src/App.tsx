@@ -1,7 +1,3 @@
-/**
- * Main application component
- * Orchestrates the application's functionality and layout
- */
 import { useEffect } from 'react';
 import { pickFolder } from "@/api/fsApi";
 import { useConfig } from "@/hooks/useConfig";
@@ -10,11 +6,7 @@ import { useFileWatcher } from "@/hooks/useFileWatcher";
 import Header from "@/components/Header";
 import MainContent from "@/components/MainContent";
 
-/**
- * Main application component
- */
 function App() {
-  // Use custom hooks for configuration, media cache, and file watching
   const { config, updateConfig } = useConfig();
 
   const { mediaItems, cacheAction, initializeCache, cacheActionText } = useMediaCache();
@@ -28,7 +20,7 @@ function App() {
           res.toString();
           // Set the flag to prevent file watcher from triggering during refresh
           setIsInitializing(true);
-          //console.log("123: ", res);
+          console.log("123: ", res);
           // Refresh the cache
           //await refreshCache(config.folderPath);
         } catch (error) {
@@ -48,8 +40,6 @@ function App() {
         try {
           // Set the flag to prevent file watcher from triggering during initialization
           setIsInitializing(true);
-
-          // Initialize the cache
           await initializeCache(config.folderPath);
         } catch (error) {
           console.error("Error initializing media cache:", error);
@@ -60,12 +50,9 @@ function App() {
       }
     }
 
-    loadInitialMedia();
+    void loadInitialMedia();
   }, [config.folderPath, initializeCache, setIsInitializing]);
 
-  /**
-   * Handler for when the user clicks the button to pick a folder
-   */
   const handlePickFolder = async () => {
     const selected = await pickFolder();
     if (selected) {

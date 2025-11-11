@@ -5,7 +5,7 @@
 import {useCallback, useState} from 'react';
 import { MediaItem } from '@/types/media_item';
 import { getAllMedia } from '@/api/cacheApi';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Database operation states

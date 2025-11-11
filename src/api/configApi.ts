@@ -1,5 +1,5 @@
 // src/config.ts
-import {BaseDirectory, readTextFile, writeTextFile} from '@tauri-apps/api/fs';
+import { BaseDirectory, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 
 export type AppConfig = {
     folderPath: string | null;
@@ -13,7 +13,7 @@ const CONFIG_FILENAME = 'app_config.json';
  */
 export async function loadConfig(): Promise<AppConfig> {
     try {
-        const text = await readTextFile(CONFIG_FILENAME, { dir: BaseDirectory.AppConfig });
+        const text = await readTextFile(CONFIG_FILENAME, { baseDir: BaseDirectory.AppConfig });
         return JSON.parse(text);
     } catch (error) {
         console.error("Error loading config: ", error)

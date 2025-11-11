@@ -7,7 +7,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { MediaItem } from '@/types/media_item';
 import { useMediaDatabase, DatabaseOperation } from '@/hooks/useMediaDatabase';
 import {getAllMedia, updateMediaCache} from '@/api/cacheApi';
-import {invoke} from "@tauri-apps/api/tauri";
+import {invoke} from "@tauri-apps/api/core";
 
 /**
  * Cache action states

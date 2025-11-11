@@ -1,4 +1,4 @@
-import { readDir, FileEntry } from "@tauri-apps/api/fs";
+import { readDir, FileEntry } from "@tauri-apps/plugin-fs";
 
 export async function listMediaFiles(
     folderPath: string,

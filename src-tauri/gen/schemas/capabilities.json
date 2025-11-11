@@ -1,0 +1,1 @@
+{"app":{"identifier":"app","description":"used for all windows","local":true,"windows":["*"],"permissions":["core:default","fs:default","fs:allow-watch",{"identifier":"fs:allow-read-text-file","allow":["**"]}]}}

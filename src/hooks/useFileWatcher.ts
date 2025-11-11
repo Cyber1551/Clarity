@@ -3,7 +3,7 @@
  * Provides functionality to watch a directory for changes and trigger callbacks
  */
 import { useEffect, useRef, useCallback } from 'react';
-import { watch } from 'tauri-plugin-fs-watch-api';
+import { watch } from '@tauri-apps/plugin-fs';
 import { isImageFile, isVideoFile } from '@/helpers/mediaHelper';
 
 /**
@@ -88,12 +88,10 @@ export function useFileWatcher(
         stopWatchingRef.current = await watch(
           folderPath,
           async (events) => {
-            if (events.length === 0) return;
-
+            if (events.paths.length === 0) return;
+            console.log("EVENTS: ", events)
             // Check if any of the changed files are relevant
-            const relevantChanges = events
-                .filter(event => isRelevantChange(event.path))
-                .map(event => event.path);
+            const relevantChanges = events.paths.filter(event => isRelevantChange(event));
 
             if (relevantChanges.length === 0) {
               return;

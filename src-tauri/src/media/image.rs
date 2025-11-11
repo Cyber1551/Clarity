@@ -1,5 +1,5 @@
 use std::fs;
-use tauri::api::process::Command;
+use std::process::Command;
 use crate::core::constants::{THUMBNAIL_EXTENSION, THUMBNAIL_SIZE};
 use crate::media;
 
@@ -17,21 +17,18 @@ pub fn generate_image_thumbnail(path: &str) -> Result<Vec<u8>, String> {
     // Generate a temporary thumbnail file name (ffmpeg will create this file)
     let temp_thumbnail_path = format!("{}.thumb.{}", path, THUMBNAIL_EXTENSION);
 
-    // Run ffmpeg sidecar to scale down the image into a thumbnail
-    let ffmpeg_cmd = Command::new_sidecar("ffmpeg")
-        .map_err(|e| format!("Failed to create ffmpeg sidecar command: {}", e))?;
-
+    // Run ffmpeg to scale down the image into a thumbnail
     // Scale the thumbnail to the requested size
     let scale_arg = format!("scale={}:-1", THUMBNAIL_SIZE);
 
-    let ffmpeg_status = ffmpeg_cmd
+    let ffmpeg_status = Command::new("ffmpeg")
         .args(&[
             "-i", path,
             "-vf", &scale_arg,
             &temp_thumbnail_path,
         ])
         .status()
-        .map_err(|e| format!("Failed to run ffmpeg sidecar: {}", e))?;
+        .map_err(|e| format!("Failed to run ffmpeg: {}", e))?;
 
     if !ffmpeg_status.success() {
         return Err(format!("ffmpeg sidecar failed with status: {:?}", ffmpeg_status));

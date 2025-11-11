@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { MediaItem } from "@/types/media_item.ts";
 import {MediaMetadata} from "@/hooks/useMediaMetadata.ts";
 
