@@ -1,40 +1,13 @@
-/**
- * Header component for the application
- * Contains the app title, folder selection, and cache status
- */
 import React from 'react';
-import { Loader2 } from 'lucide-react';
-import { CacheAction } from '@/hooks/useMediaCache';
 
 interface HeaderProps {
-  /**
-   * Current folder path
-   */
   folderPath: string | null;
-  
-  /**
-   * Current cache action state
-   */
-  cacheAction: CacheAction;
-  
-  /**
-   * Text descriptions for cache actions
-   */
   cacheActionText: { [key: number]: string };
-  
-  /**
-   * Handler for when the user clicks the button to pick a folder
-   */
   onPickFolder: () => Promise<void>;
 }
 
-/**
- * Header component with app title, folder selection, and cache status
- */
 const Header: React.FC<HeaderProps> = ({
   folderPath,
-  cacheAction,
-  cacheActionText,
   onPickFolder
 }) => {
   return (
@@ -46,14 +19,6 @@ const Header: React.FC<HeaderProps> = ({
 
       {/* Right Side: Folder display and Pick/Change button */}
       <div className="flex items-center space-x-4">
-        {cacheAction !== CacheAction.Idle && (
-          <div className="pr-4 flex items-center space-x-2">
-            <Loader2 className="animate-spin h-5 w-5 text-gray-600" />
-            <span className="text-sm text-gray-600">
-              {cacheActionText[cacheAction]}
-            </span>
-          </div>
-        )}
         <span className="text-sm text-gray-600">
           {folderPath ? folderPath : 'No folder selected'}
         </span>

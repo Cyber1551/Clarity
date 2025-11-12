@@ -1,84 +1,20 @@
-import { useEffect } from 'react';
-import { pickFolder } from "@/api/fsApi";
-import { useConfig } from "@/hooks/useConfig";
-import { useMediaCache } from "@/hooks/useMediaCache";
-import { useFileWatcher } from "@/hooks/useFileWatcher";
 import Header from "@/components/Header";
 import MainContent from "@/components/MainContent";
 
 function App() {
-  const { config, updateConfig } = useConfig();
-
-  const { mediaItems, cacheAction, initializeCache, cacheActionText } = useMediaCache();
-
-  // Set up file watcher to refresh cache when files change
-  const { setIsInitializing } = useFileWatcher(
-    config.folderPath,
-    async (res) => {
-      if (config.folderPath) {
-        try {
-          res.toString();
-          // Set the flag to prevent file watcher from triggering during refresh
-          setIsInitializing(true);
-          console.log("123: ", res);
-          // Refresh the cache
-          //await refreshCache(config.folderPath);
-        } catch (error) {
-          console.error("Error refreshing media cache:", error);
-        } finally {
-          // Always reset the flag, even if refresh fails
-          setIsInitializing(false);
-        }
-      }
-    }
-  );
-
-  // Load media items when the folder path changes
-  useEffect(() => {
-    async function loadInitialMedia() {
-      if (config.folderPath) {
-        try {
-          // Set the flag to prevent file watcher from triggering during initialization
-          setIsInitializing(true);
-          await initializeCache(config.folderPath);
-        } catch (error) {
-          console.error("Error initializing media cache:", error);
-        } finally {
-          // Always reset the flag, even if initialization fails
-          setIsInitializing(false);
-        }
-      }
-    }
-
-    void loadInitialMedia();
-  }, [config.folderPath, initializeCache, setIsInitializing]);
-
-  const handlePickFolder = async () => {
-    const selected = await pickFolder();
-    if (selected) {
-      try {
-        // Save the new folder path to the config
-        await updateConfig({ folderPath: selected });
-      } catch (error) {
-        console.error("Error updating configuration:", error);
-      }
-    }
-  };
-
   return (
     <div className="min-h-screen w-screen flex flex-col">
       {/* Header with app title, folder selection, and cache status */}
       <Header
-        folderPath={config.folderPath}
-        cacheAction={cacheAction}
-        cacheActionText={cacheActionText}
-        onPickFolder={handlePickFolder}
+        folderPath={""}
+        cacheActionText={{}}
+        onPickFolder={() => Promise.resolve()}
       />
 
       {/* Main content area with media grid */}
       <MainContent
-        folderPath={config.folderPath}
-        mediaItems={mediaItems}
+        folderPath={""}
+        mediaItems={[]}
       />
     </div>
   );
