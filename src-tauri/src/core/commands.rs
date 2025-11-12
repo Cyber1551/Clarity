@@ -1,9 +1,10 @@
 use tauri::State;
-use crate::app::state;
-use crate::app::state::AppState;
+use crate::core::state;
+use crate::core::state::AppState;
 use crate::{database, media};
-use crate::app::constants::BROKEN_THUMBNAIL;
+use crate::core::constants::BROKEN_THUMBNAIL;
 use crate::types::MediaItemResponse;
+use crate::cache::builder;
 
 /// Initialize the database with a specified folder path
 #[tauri::command]
@@ -42,7 +43,7 @@ pub async fn get_media_items(state: State<'_, AppState>) -> Result<Vec<MediaItem
 
             responses.push(MediaItemResponse {
                 id: media.id,
-                path: media.path,
+                path: String::from(media.path.to_string_lossy()),
                 file_name: media.file_name,
                 file_size: media.file_size,
                 file_extension: media.file_extension,
@@ -56,4 +57,18 @@ pub async fn get_media_items(state: State<'_, AppState>) -> Result<Vec<MediaItem
     }).await.map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
     
     Ok(response_items)
+}
+
+#[tauri::command]
+pub async fn build_cache(state: State<'_, AppState>, folder_path: String) -> Result<(), String> {
+    println!("Building cache...");
+    let pool = state.get_pool()?;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let conn = state::get_connection(&pool)?;
+        builder::build_cache(&conn, folder_path).map_err(|e| format!("Failed to build cache: {}", e))?;
+        Ok::<_, String>(())
+    }).await.map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
+
+    Ok(())
 }

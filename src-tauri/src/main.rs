@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::sync::{Arc, Mutex};
-use app::app::commands;
-use app::app::state::AppState;
+use app::core::commands;
+use app::core::state::AppState;
 
 fn main() {
     let state = AppState {
@@ -11,11 +11,14 @@ fn main() {
     };
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs_watch::init())
         .manage(state)
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
           commands::initialize_database,
-          commands::get_media_items
+          commands::get_media_items,
+          commands::build_cache
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

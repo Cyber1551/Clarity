@@ -2,7 +2,7 @@
  * File system API module
  * Provides functions for interacting with the file system
  */
-import { open } from "@tauri-apps/api/dialog";
+import { open } from "@tauri-apps/plugin-dialog";
 import { withErrorHandling } from "@/utils/apiUtils";
 
 /**

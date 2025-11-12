@@ -6,7 +6,7 @@ import {
   getAllMedia
 } from "@/api/cacheApi";
 import {MediaItem} from "@/types/media_item";
-import {invoke} from '@tauri-apps/api/tauri';
+import {invoke} from '@tauri-apps/api/core';
 
 /**
  * Initialize the database in the specified folder

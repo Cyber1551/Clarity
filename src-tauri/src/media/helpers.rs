@@ -1,8 +1,8 @@
 use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use base64::Engine;
-use crate::app::constants::THUMBNAIL_EXTENSION;
+use crate::core::constants::THUMBNAIL_EXTENSION;
 use crate::media::image;
 use crate::media::video;
 use crate::database::models::MediaItem;
@@ -26,7 +26,6 @@ pub fn get_file_size(path: &str) -> u64 {
         Err(_) => 0,
     }
 }
-
 
 pub fn generate_base64_from_image(image: Vec<u8>) -> String {
     // Convert to base64
@@ -53,17 +52,18 @@ fn create_media_item(id: i64, path: &str) -> Option<MediaItem> {
 
     let media_type = if is_image { "image" } else { "video" };
     let length = video::get_video_duration(path);
-    let now = utils::get_current_timestamp();
+    //let now = utils::get_current_timestamp();
 
     Some(MediaItem {
         id,
-        path: path.to_string(),
+        path: PathBuf::from(path),
         file_name: file_name.to_string(),
         file_size,
         file_extension: file_extension.to_string(),
         media_type: media_type.to_string(),
         video_length: length,
-        created_at: now,
-        updated_at: now,
+        hash: String::from(""),
+        created_at: 0,
+        updated_at: 0.0,
     })
 }

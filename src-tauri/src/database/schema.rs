@@ -21,9 +21,10 @@ fn create_tables_if_missing(conn: &Connection) -> Result<()> {
             file_size INTEGER,
             file_extension TEXT,
             media_type TEXT,
-            video_length INTEGER,
+            video_length REAL,
+            hash TEXT,
             created_at INTEGER,
-            updated_at INTEGER
+            updated_at REAL
         )",
         [],
     )?;
