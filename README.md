@@ -1,2 +1,2 @@
-# VidTrack
+# Clarity
  
