@@ -43,19 +43,21 @@
       }
     }
   },
-  "productName": "vidtrack",
-  "mainBinaryName": "vidtrack",
+  "productName": "clarity",
+  "mainBinaryName": "clarity",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "cyber.clarity",
   "plugins": {},
   "app": {
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
         "resizable": true,
-        "title": "VidTrack",
-        "width": 800,
+        "title": "Clarity",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1280,
+        "minHeight": 800,
         "useHttpsScheme": true
       }
     ],

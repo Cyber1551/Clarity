@@ -4,3 +4,4 @@ pub mod database;
 pub mod media;
 pub mod utils;
 pub mod cache;
+pub mod errors;
