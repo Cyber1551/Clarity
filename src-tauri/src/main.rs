@@ -11,7 +11,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_app_config,
             commands::choose_library_root,
-            commands::initialize_library_dirs
+            commands::initialize_library
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

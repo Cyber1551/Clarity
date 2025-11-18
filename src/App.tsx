@@ -4,7 +4,7 @@ import { Box, Button, Center, Spinner, Tabs } from "@chakra-ui/react";
 import { useConfigStore } from "@/stores/configStore.ts";
 import { useEffect } from "react";
 import { SettingsDialog } from "@/components/SettingsDialog.tsx";
-import { initialize_library_dirs } from "@/api/libraryApi.ts";
+import { initialize_library } from "@/api/libraryApi.ts";
 
 const App = () => {
     const config = useConfigStore(s => s.config);
@@ -19,7 +19,7 @@ const App = () => {
 
     useEffect(() => {
         if (config?.libraryRoot) {
-            void initialize_library_dirs();
+            void initialize_library();
         }
     }, [config?.libraryRoot]);
 

@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-
-export async function initialize_library_dirs(): Promise<void> {
-    await invoke("initialize_library_dirs");
+export async function initialize_library(): Promise<void> {
+    await invoke("initialize_library");
 }
 
