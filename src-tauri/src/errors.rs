@@ -21,6 +21,9 @@ pub enum AppError {
     #[error("library root is not configured")]
     LibraryRootMissing,
 
+    #[error("filename is not valid UTF-8: {path:?}")]
+    InvalidFileName { path: PathBuf },
+
     #[error("invalid media file: {path:?}")]
     InvalidMedia { path: PathBuf },
 
