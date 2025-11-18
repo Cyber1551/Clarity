@@ -1,8 +1,8 @@
+use crate::core::constants::CONFIG_FILE_NAME;
+use crate::errors::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 use tauri::{AppHandle, Manager};
-use crate::core::constants::CONFIG_FILE_NAME;
-use crate::errors::{AppError, AppResult};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct AppConfig {
@@ -45,7 +45,6 @@ pub fn load_config(app: &AppHandle) -> AppResult<AppConfig> {
 
     let bytes = fs::read(&path)?; // AppError::Io
     let cfg = serde_json::from_slice(&bytes)?; // AppError::Json
-    println!("{}",serde_json::to_string(&cfg)?.to_string());
     Ok(cfg)
 }
 

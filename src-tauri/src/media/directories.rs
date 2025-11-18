@@ -1,6 +1,6 @@
+use crate::errors::AppResult;
 use std::fs;
 use std::path::Path;
-use crate::errors::AppResult;
 
 pub fn ensure_core_dirs(root: &Path) -> AppResult<()> {
     let objects = root.join(".objects");
