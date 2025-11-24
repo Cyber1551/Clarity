@@ -1,8 +1,8 @@
 use crate::core::config::{self, AppConfigDto};
-use crate::errors::AppError;
-use crate::media::directory_utils;
+use crate::core::error::AppError;
 use tauri_plugin_dialog::DialogExt;
-use crate::cache::builder::scan_unsorted;
+use crate::files::scan::scan_unsorted;
+use crate::filesystem::directory;
 
 /// - Ok(AppConfigDta) returns the configuration data for the app (such as library root folder)
 /// - Err(String) on error
@@ -39,9 +39,9 @@ pub async fn choose_library_root(app: tauri::AppHandle) -> Result<Option<String>
 /// - Ok(()) on success. Idempotent. Will succeed regardless if the folders were missing or already created
 /// - Err(String) on error
 #[tauri::command]
-pub fn initialize_library(app: tauri::AppHandle) -> Result<(), String> {
+pub fn initialize_library(app: tauri::AppHandle) -> Result<(), String>  {
     let root = config::get_library_root(&app).map_err(|e: AppError| e.to_string())?;
-    directory_utils::ensure_core_dirs(&root).map_err(|e: AppError| e.to_string())?;
+    directory::ensure_core_dirs(&root).map_err(|e: AppError| e.to_string())?;
     scan_unsorted(&root).map_err(|e: AppError| e.to_string())?;
     Ok(())
 }

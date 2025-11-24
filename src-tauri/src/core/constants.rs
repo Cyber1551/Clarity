@@ -1,7 +1,7 @@
 pub const CONFIG_FILE_NAME: &str = "config.json";
 
 // Database
-pub const DB_NAME: &str = ".media-cache.sqlite3";
+pub const DB_NAME: &str = ".media-filesystem.sqlite3";
 
 // Thumbnails
 pub const THUMBNAIL_SIZE: u32 = 256;
