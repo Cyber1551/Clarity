@@ -36,7 +36,7 @@ pub fn get_all_files(tx: &Transaction) -> AppResult<Vec<FileEntry>> {
             ext,
             size_bytes,
             mtime,
-            last_scan_mtime,
+            last_seen_mtime,
             is_reviewed,
             created_at,
             updated_at
@@ -53,7 +53,7 @@ pub fn get_all_files(tx: &Transaction) -> AppResult<Vec<FileEntry>> {
             ext: row.get(5)?,
             size_bytes: row.get(6)?,
             mtime: row.get(7)?,
-            last_scan_mtime: row.get(8)?,
+            last_seen_mtime: row.get(8)?,
             is_reviewed: row.get(9)?,
             created_at: row.get(10)?,
             updated_at: row.get(11)?,
@@ -78,7 +78,7 @@ pub fn get_file_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Optio
             file_name,
             ext,
             size_bytes,
-            mtime_secs,
+            mtime,
             last_seen_mtime,
             is_reviewed,
             created_at,
@@ -99,7 +99,7 @@ pub fn get_file_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Optio
                 ext: row.get(4)?,
                 size_bytes: row.get(5)?,
                 mtime: row.get(6)?,
-                last_scan_mtime: row.get(7)?,
+                last_seen_mtime: row.get(7)?,
                 is_reviewed: row.get::<_, i64>(8)? != 0,
                 created_at: row.get(9)?,
                 updated_at: row.get(10)?,
@@ -119,7 +119,7 @@ pub fn insert_file_row(tx: &Transaction, new_file: &NewFileRecord) -> AppResult<
             ext,
             size_bytes,
             mtime,
-            last_scan_mtime,
+            last_seen_mtime,
             is_reviewed,
             created_at,
             updated_at
@@ -152,7 +152,7 @@ pub fn update_file_row(tx: &Transaction, rel_path: &str, size_bytes: &i64, mtime
         SET
             size_bytes = ?1,
             mtime = ?2,
-            last_scan_mtime = ?2,
+            last_seen_mtime = ?2,
             updated_at = ?3
         WHERE rel_path = ?4
     "#, params![size_bytes, mtime, now, rel_path])?; // AppError::Database
@@ -171,10 +171,12 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
     let now = now_ms();
     let size_bytes = meta::get_file_size(full_path)?;
     let mtime = meta::get_mtime(full_path)?;
+    println!("file: {} size: {} mtime: {}", rel_path, size_bytes, mtime);
     let existing = get_file_by_rel_path(tx, rel_path)?;
 
     match existing {
         Some(mut entry) => {
+            println!("file exists in db: {}", entry.rel_path);
             let mtime_changed = entry.mtime != mtime || entry.size_bytes != size_bytes;
 
             if mtime_changed {
@@ -186,7 +188,7 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
                 update_file_last_seen(tx, &mtime, &now)?;
             }
 
-            entry.last_scan_mtime = mtime;
+            entry.last_seen_mtime = mtime;
             entry.updated_at = now;
 
             Ok(UpsertFileResult {
@@ -196,6 +198,7 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
             })
         }
         None => {
+            println!("file does not exist in db: {}", rel_path);
             // Insert a new file row
             let path_components = filesystem::path::split_path(rel_path);
 
@@ -208,8 +211,10 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
                 mtime,
                 now,
             };
+            println!("new file {:?}", new_file);
 
             let new_file_id = insert_file_row(tx, &new_file)?;
+            println!("new file id {:?}", new_file_id);
             let entry = FileEntry {
                 id: new_file_id,
                 media_id: None,
@@ -219,7 +224,7 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
                 ext: path_components.ext,
                 size_bytes,
                 mtime,
-                last_scan_mtime: mtime,
+                last_seen_mtime: mtime,
                 is_reviewed: false,
                 created_at: now,
                 updated_at: now,

@@ -27,6 +27,7 @@ impl DbConn {
             PRAGMA synchronous = NORMAL;
             PRAGMA temp_store = MEMORY;
             PRAGMA foreign_keys = ON;
+            PRAGMA busy_timeout = 3000; -- 3 seconds
         "#)?;
 
         initialize_schema(&conn)?;
@@ -69,7 +70,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
             ext                 TEXT NOT NULL,
             size_bytes          INTEGER NOT NULL,
             mtime               INTEGER NOT NULL,
-            last_scan_mtime     INTEGER NOT NULL,
+            last_seen_mtime     INTEGER NOT NULL,
             is_reviewed         INTEGER NOT NULL DEFAULT 0,
             created_at          INTEGER NOT NULL,
             updated_at          INTEGER NOT NULL
@@ -97,7 +98,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
         CREATE TABLE IF NOT EXISTS jobs (
             id                  INTEGER PRIMARY KEY,
             job_type            TEXT NOT NULL,
-            media_id            INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            media_id            INTEGER REFERENCES media(id) ON DELETE CASCADE,
             file_id             INTEGER,
             rel_path            TEXT,
             queued_mtime        INTEGER,

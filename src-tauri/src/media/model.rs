@@ -1,41 +1,16 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
 use rusqlite::ToSql;
 use rusqlite::types::{FromSql, FromSqlResult, ToSqlOutput, ValueRef};
+use strum::{Display, EnumString};
 use crate::jobs::JobStatus;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
 #[serde(rename_all = "lowercase")] // Serializes as "image" instead of "Image"
+#[strum(serialize_all = "lowercase")]
 pub enum MediaType {
     Image,
     Video,
     Unknown
-}
-
-// Allows: my_enum.to_string() -> "image"
-impl fmt::Display for MediaType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            MediaType::Image => "image",
-            MediaType::Video => "video",
-            MediaType::Unknown => "unknown",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-// Allows: "image".parse::<MediaType>()
-impl FromStr for MediaType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "image" => Ok(MediaType::Image),
-            "video" => Ok(MediaType::Video),
-            _ => Ok(MediaType::Unknown)
-        }
-    }
 }
 
 impl FromSql for MediaType {

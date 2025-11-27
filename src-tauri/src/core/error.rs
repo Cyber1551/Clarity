@@ -35,3 +35,11 @@ pub enum AppError {
     #[error("Other error: {0}")]
     Other(String),
 }
+
+impl AppError {
+    pub fn report(&self) -> String {
+        eprintln!("\n============= AppError =============");
+        eprintln!("{}", self);
+        self.to_string()
+    }
+}

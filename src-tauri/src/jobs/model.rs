@@ -1,43 +1,38 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
 use rusqlite::ToSql;
-use rusqlite::types::{FromSql, FromSqlResult, ToSqlOutput, ValueRef};
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef};
+use strum::{Display, EnumString};
+use crate::core::error::{AppError, AppResult};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
+#[serde(rename_all = "lowercase")] // Serializes as "hash" instead of "Hash"
+#[strum(serialize_all = "lowercase")]
+pub enum JobType {
+    Hash,
+    Metadata,
+    Thumbnail,
+}
+
+impl FromSql for JobType {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        let s = value.as_str()?;
+        s.parse::<JobType>().map_err(|e| FromSqlError::Other(Box::new(e)) )
+    }
+}
+
+impl ToSql for JobType {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::from(self.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
 #[serde(rename_all = "lowercase")] // Serializes as "pending" instead of "Pending"
+#[strum(serialize_all = "lowercase")]
 pub enum JobStatus {
     Pending,
     Processing,
-    Done,
     Error
-}
-
-// Allows: my_enum.to_string() -> "pending"
-impl fmt::Display for JobStatus {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            JobStatus::Pending => "pending",
-            JobStatus::Processing => "processing",
-            JobStatus::Done => "done",
-            JobStatus::Error => "error",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-// Allows: "pending".parse::<JobStatus>()
-impl FromStr for JobStatus {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "pending" => Ok(JobStatus::Pending),
-            "processing" => Ok(JobStatus::Processing),
-            "done" => Ok(JobStatus::Done),
-            _ => Ok(JobStatus::Error)
-        }
-    }
 }
 
 impl FromSql for JobStatus {
@@ -56,8 +51,8 @@ impl ToSql for JobStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JobEntry {
     pub id: i64,
-    pub job_type: String,
-    pub media_id: i64,
+    pub job_type: JobType,
+    pub media_id: Option<i64>,
     pub file_id: Option<i64>,
     pub rel_path: Option<String>,
     pub queued_mtime: Option<i64>,
@@ -67,4 +62,18 @@ pub struct JobEntry {
     pub last_error: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
+}
+
+impl JobEntry {
+    pub fn require_file_id(&self) -> AppResult<i64> {
+        self.file_id.ok_or_else(|| {
+            AppError::Other(format!("Job {} ({:?}) missing file_id", self.id, self.job_type))
+        })
+    }
+
+    pub fn require_media_id(&self) -> AppResult<i64> {
+        self.media_id.ok_or_else(|| {
+            AppError::Other(format!("Job {} ({:?}) missing media_id", self.id, self.job_type))
+        })
+    }
 }

@@ -10,7 +10,7 @@ pub struct FileEntry {
     pub ext: String,
     pub size_bytes: i64,
     pub mtime: i64,
-    pub last_scan_mtime: i64,
+    pub last_seen_mtime: i64,
     pub is_reviewed: bool,
     pub created_at: i64,
     pub updated_at: i64,

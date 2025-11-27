@@ -7,11 +7,13 @@ use crate::core::error::AppResult;
 use crate::db;
 use crate::db::schema::DbConn;
 use crate::filesystem::path::{get_rel_path, path_to_str};
+use crate::jobs::JobType;
 use crate::media::{image_utils, video_utils};
 
 pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
     let mut conn = DbConn::new(library_root)?;
     let unsorted_dir = library_root.join(UNSORTED_DIRECTORY);
+
     if !unsorted_dir.exists() {
         // Missing unsorted directory, nothing to scan
         return Ok(());
@@ -41,13 +43,16 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
             Err(_) => continue, // This will happen if the path contains invalid UTF-8 characters. Skip the file
         };
 
-        let result = db::files::upsert_file(&tx, &rel_path_str, &path)?;
+        println!("(scan) Walked: {}", rel_path_str.to_string());
 
-        seen_rel_paths.insert(rel_path_str);
+        let result = db::files::upsert_file(&tx, &rel_path_str, &path)?;
+        println!("(scan) upserted file: {:?}", result);
+        seen_rel_paths.insert(rel_path_str.clone());
 
         if result.is_new || result.mtime_changed {
             // new or changed file detected: queue a job
-            db::jobs::enqueue_hash_job(&tx, &result.file_entry)?;
+            println!("(scan) New or changed file detected: {}", rel_path_str.to_string());
+            db::jobs::enqueue_job(&tx, JobType::Hash, &result.file_entry)?;
         }
     }
 

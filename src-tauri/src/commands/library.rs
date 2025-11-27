@@ -1,14 +1,17 @@
+use rusqlite::fallible_iterator::FallibleIterator;
+use tauri::State;
 use crate::core::config::{self, AppConfigDto};
 use crate::core::error::AppError;
 use tauri_plugin_dialog::DialogExt;
 use crate::files::scan::scan_unsorted;
 use crate::filesystem::directory;
+use crate::jobs::JobWorkerManager;
 
 /// - Ok(AppConfigDta) returns the configuration data for the app (such as library root folder)
 /// - Err(String) on error
 #[tauri::command]
-pub fn get_app_config(app: tauri::AppHandle) -> Result<AppConfigDto, String> {
-    let app_config = config::load_config(&app).map_err(|e: AppError| e.to_string())?;
+pub fn get_app_config(app: tauri::AppHandle, _job_worker_manager: State<JobWorkerManager>) -> Result<AppConfigDto, String> {
+    let app_config = config::load_config(&app).map_err(|e: AppError| e.report())?;
     Ok(AppConfigDto::from(app_config))
 }
 
@@ -16,7 +19,7 @@ pub fn get_app_config(app: tauri::AppHandle) -> Result<AppConfigDto, String> {
 /// - Ok(None) if the user canceled
 /// - Err(String) on error
 #[tauri::command]
-pub async fn choose_library_root(app: tauri::AppHandle) -> Result<Option<String>, String> {
+pub async fn choose_library_root(app: tauri::AppHandle, job_worker_manager: State<'_, JobWorkerManager>) -> Result<Option<String>, String> {
     let folder = app
         .dialog()
         .file()
@@ -28,9 +31,18 @@ pub async fn choose_library_root(app: tauri::AppHandle) -> Result<Option<String>
 
     let folder_str = folder_path.to_string();
 
-    let mut cfg = config::load_config(&app).map_err(|e: AppError| e.to_string())?;
-    cfg.library_root = Some(folder_str.clone());
-    config::save_config(&app, &cfg).map_err(|e: AppError| e.to_string())?;
+    match folder_path.as_path() {
+        Some(path) => {
+            let mut cfg = config::load_config(&app).map_err(|e: AppError| e.report())?;
+            cfg.library_root = Some(folder_str.clone());
+            config::save_config(&app, &cfg).map_err(|e: AppError| e.report())?;
+
+            job_worker_manager.try_start_worker(path);
+        }
+        None => {
+            return Ok(None)
+        }
+    };
 
     Ok(Some(folder_str))
 }
@@ -39,9 +51,9 @@ pub async fn choose_library_root(app: tauri::AppHandle) -> Result<Option<String>
 /// - Ok(()) on success. Idempotent. Will succeed regardless if the folders were missing or already created
 /// - Err(String) on error
 #[tauri::command]
-pub fn initialize_library(app: tauri::AppHandle) -> Result<(), String>  {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.to_string())?;
-    directory::ensure_core_dirs(&root).map_err(|e: AppError| e.to_string())?;
-    scan_unsorted(&root).map_err(|e: AppError| e.to_string())?;
+pub fn initialize_library(app: tauri::AppHandle, _job_worker_manager: State<JobWorkerManager>) -> Result<(), String>  {
+    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
+    directory::ensure_core_dirs(&root).map_err(|e: AppError| e.report())?;
+    scan_unsorted(&root).map_err(|e: AppError| e.report())?;
     Ok(())
 }
