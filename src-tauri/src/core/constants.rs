@@ -6,6 +6,9 @@ pub const WORKER_THREAD_SLEEP_DURATION: std::time::Duration = std::time::Duratio
 // Job processing
 pub const MAX_JOB_ATTEMPTS: i32 = 3;
 
+// Hash processing
+pub const HASH_BUFFER_SIZE: usize = 65536; // 64KB
+
 // Database
 pub const DB_NAME: &str = ".media-filesystem.sqlite3";
 

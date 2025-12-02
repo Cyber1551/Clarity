@@ -309,23 +309,57 @@ pub fn delete_file_by_rel_path(trans: &Transaction, rel_path: &str) -> AppResult
     Ok(())
 }
 
+/// Removes files from the database that are not in the seen set.
+///
+/// Uses an efficient NOT IN query to delete all missing files in one operation.
 pub fn remove_deleted_files(trans: &Transaction, seen_rel_paths: &HashSet<String>) -> AppResult<()> {
-    let mut stmt = trans.prepare(r#"
-        SELECT id, rel_path
-        FROM files
-    "#)?;
+    if seen_rel_paths.is_empty() {
+        // If no files were seen, delete all files
+        let deleted = trans.execute("DELETE FROM files", [])?;
+        tracing::info!("Removed {} files that no longer exist", deleted);
+        return Ok(());
+    }
 
-    let rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,   // id
-            row.get::<_, String>(1)?, // rel_path
-        ))
-    })?;
+    // For large sets, we need to use a temporary table approach
+    // For small-medium sets, we can use IN clause
+    if seen_rel_paths.len() < 1000 {
+        // Build placeholders for IN clause
+        let placeholders = (0..seen_rel_paths.len())
+            .map(|i| format!("?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(",");
 
-    for row in rows {
-        let (id, rel_path): (i64, String) = row?;
-        if !seen_rel_paths.contains(&rel_path) {
-            trans.execute(r#"DELETE FROM files WHERE id = ?1"#, params![id])?;
+        let query = format!("DELETE FROM files WHERE rel_path NOT IN ({})", placeholders);
+
+        // Convert HashSet to Vec for rusqlite
+        let rel_paths: Vec<&str> = seen_rel_paths.iter().map(|s| s.as_str()).collect();
+        let params = rusqlite::params_from_iter(rel_paths);
+
+        let deleted = trans.execute(&query, params)?;
+        if deleted > 0 {
+            tracing::info!("Removed {} files that no longer exist", deleted);
+        }
+    } else {
+        // For very large sets, fall back to the old approach
+        let mut stmt = trans.prepare("SELECT id, rel_path FROM files")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })?;
+
+        let mut to_delete = Vec::new();
+        for row in rows {
+            let (id, rel_path): (i64, String) = row?;
+            if !seen_rel_paths.contains(&rel_path) {
+                to_delete.push(id);
+            }
+        }
+
+        if !to_delete.is_empty() {
+            let placeholders = to_delete.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let query = format!("DELETE FROM files WHERE id IN ({})", placeholders);
+            let params = rusqlite::params_from_iter(to_delete);
+            let deleted = trans.execute(&query, params)?;
+            tracing::info!("Removed {} files that no longer exist", deleted);
         }
     }
 

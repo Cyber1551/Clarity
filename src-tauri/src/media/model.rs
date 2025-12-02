@@ -61,3 +61,31 @@ pub struct MediaEntry {
     pub created_at: i64,
     pub updated_at: i64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_media_type_from_image_extension() {
+        assert_eq!(MediaType::from_extension("jpg"), MediaType::Image);
+        assert_eq!(MediaType::from_extension("JPG"), MediaType::Image);
+        assert_eq!(MediaType::from_extension("png"), MediaType::Image);
+        assert_eq!(MediaType::from_extension("webp"), MediaType::Image);
+    }
+
+    #[test]
+    fn test_media_type_from_video_extension() {
+        assert_eq!(MediaType::from_extension("mp4"), MediaType::Video);
+        assert_eq!(MediaType::from_extension("MP4"), MediaType::Video);
+        assert_eq!(MediaType::from_extension("mov"), MediaType::Video);
+        assert_eq!(MediaType::from_extension("mkv"), MediaType::Video);
+    }
+
+    #[test]
+    fn test_media_type_from_unknown_extension() {
+        assert_eq!(MediaType::from_extension("txt"), MediaType::Unknown);
+        assert_eq!(MediaType::from_extension("pdf"), MediaType::Unknown);
+        assert_eq!(MediaType::from_extension(""), MediaType::Unknown);
+    }
+}

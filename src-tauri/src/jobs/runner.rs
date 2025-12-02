@@ -8,6 +8,7 @@ use crate::core::error::AppResult;
 use crate::db;
 use crate::db::schema::DbConn;
 use crate::jobs::{workers, JobType};
+use crate::jobs::metrics::JobMetrics;
 
 /// Manages the lifecycle of background job worker threads.
 ///
@@ -15,6 +16,7 @@ use crate::jobs::{workers, JobType};
 pub struct JobWorkerManager {
     started: AtomicBool,
     shutdown: Arc<AtomicBool>,
+    metrics: Arc<JobMetrics>,
 }
 
 impl JobWorkerManager {
@@ -23,7 +25,13 @@ impl JobWorkerManager {
         Self {
             started: AtomicBool::new(false),
             shutdown: Arc::new(AtomicBool::new(false)),
+            metrics: Arc::new(JobMetrics::new()),
         }
+    }
+
+    /// Returns a reference to the job metrics.
+    pub fn metrics(&self) -> &JobMetrics {
+        &self.metrics
     }
 
     /// Attempts to start a job worker thread if one hasn't been started yet.
@@ -38,7 +46,7 @@ impl JobWorkerManager {
         {
             // We won the race, actually spawn worker thread
             info!("Starting job worker for library: {}", library_root.display());
-            spawn_job_worker(library_root.to_path_buf(), self.shutdown.clone());
+            spawn_job_worker(library_root.to_path_buf(), self.shutdown.clone(), self.metrics.clone());
         } else {
             // Already started, no-op
             debug!("Worker already started, skipping");
@@ -49,19 +57,20 @@ impl JobWorkerManager {
     pub fn shutdown(&self) {
         info!("Signaling job worker to shut down");
         self.shutdown.store(true, Ordering::SeqCst);
+        info!("Job worker shut down gracefully. {}", self.metrics.summary());
     }
 }
 
 
-fn spawn_job_worker(library_root: PathBuf, shutdown: Arc<AtomicBool>) {
+fn spawn_job_worker(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<JobMetrics>) {
     thread::spawn(move || {
-        if let Err(e) = worker_loop(library_root, shutdown) {
+        if let Err(e) = worker_loop(library_root, shutdown, metrics) {
             error!("Job worker exited with error: {}", e);
         }
     });
 }
 
-fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>) -> AppResult<()> {
+fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<JobMetrics>) -> AppResult<()> {
     let mut conn = DbConn::new(&library_root)?;
 
     info!("Job worker loop started");
@@ -90,10 +99,12 @@ fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>) -> AppResult<()
             Ok(_) => {
                 db::jobs::mark_job_done(&tx, job.id)?;
                 tx.commit()?;
+                metrics.record_success(&job.job_type);
                 info!("Job completed successfully: id={} type={:?}", job.id, job.job_type);
             }
             Err(e) => {
                 error!("Job failed: id={} type={:?} error={}", job.id, job.job_type, e);
+                metrics.record_failure();
                 tx.rollback()?;
                 // ensure the job is marked with an error in a new short transaction
                 let tx1 = conn.transaction()?;
@@ -101,8 +112,8 @@ fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>) -> AppResult<()
                 tx1.commit()?;
             }
         }
+        info!("Current Metrics: {}", metrics.summary());
     }
 
-    info!("Job worker shutting down gracefully");
     Ok(())
 }

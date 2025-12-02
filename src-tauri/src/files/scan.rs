@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::path::Path;
-use rusqlite::Transaction;
 use tracing::{info, debug, warn};
 use walkdir::WalkDir;
 use crate::core::constants::UNSORTED_DIRECTORY;
@@ -72,22 +71,9 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
         }
     }
 
-    delete_missing_files(&tx, &seen_rel_paths)?;
+    db::files::remove_deleted_files(&tx, &seen_rel_paths)?;
 
     tx.commit()?;
     info!("Scan completed. Total files found: {}", seen_rel_paths.len());
-    Ok(())
-}
-
-fn delete_missing_files(tx: &Transaction, seen_rel_paths: &HashSet<String>) -> AppResult<()> {
-    let all_files = db::files::get_all_files(tx)?;
-
-    for file in all_files {
-        let rel_path = file.rel_path;
-        if !seen_rel_paths.contains(&rel_path) {
-            db::files::delete_file_by_rel_path(tx, &rel_path)?;
-        }
-    }
-
     Ok(())
 }
