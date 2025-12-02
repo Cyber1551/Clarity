@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use rusqlite::ToSql;
 use rusqlite::types::{FromSql, FromSqlResult, ToSqlOutput, ValueRef};
 use strum::{Display, EnumString};
+use crate::core::constants::{VALID_IMAGE_EXTENSIONS, VALID_VIDEO_EXTENSIONS};
 use crate::jobs::JobStatus;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
@@ -11,6 +12,19 @@ pub enum MediaType {
     Image,
     Video,
     Unknown
+}
+
+impl MediaType {
+    pub fn from_extension(ext: &str) -> Self {
+        let ext_lower = ext.to_lowercase();
+        if VALID_IMAGE_EXTENSIONS.contains(&ext_lower.as_str()) {
+            MediaType::Image
+        } else if VALID_VIDEO_EXTENSIONS.contains(&ext_lower.as_str()) {
+            MediaType::Video
+        } else {
+            MediaType::Unknown
+        }
+    }
 }
 
 impl FromSql for MediaType {
@@ -29,7 +43,7 @@ impl ToSql for MediaType {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MediaEntry {
     pub id: i64,
-    pub content_hash: Option<String>,
+    pub content_hash: String,
     pub media_type: MediaType,
     pub width: Option<i32>,
     pub height: Option<i32>,

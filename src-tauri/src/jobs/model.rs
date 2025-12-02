@@ -30,9 +30,16 @@ impl ToSql for JobType {
 #[serde(rename_all = "lowercase")] // Serializes as "pending" instead of "Pending"
 #[strum(serialize_all = "lowercase")]
 pub enum JobStatus {
+    Done,
     Pending,
     Processing,
     Error
+}
+
+impl JobStatus {
+    pub fn is_pending_or_error(&self) -> bool {
+        matches!(self, JobStatus::Pending | JobStatus::Error)
+    }
 }
 
 impl FromSql for JobStatus {

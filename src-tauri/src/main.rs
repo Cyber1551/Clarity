@@ -4,7 +4,7 @@
 use tauri::Manager;
 use app::commands::{library};
 use app::core::config;
-use app::jobs::JobWorkerManager;
+use app::jobs::runner::JobWorkerManager;
 
 fn main() {
     tauri::Builder::default()

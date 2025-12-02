@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use image;
 use thiserror::Error;
 
 pub type AppResult<T> = Result<T, AppError>;
@@ -13,6 +14,9 @@ pub enum AppError {
 
     #[error("SQLite error: {0}")]
     Database(#[from] rusqlite::Error),
+
+    #[error("Image error {0}")]
+    ImageError(#[from] image::ImageError),
 
     #[error("Config error {0}")]
     Config(String),
@@ -31,6 +35,9 @@ pub enum AppError {
 
     #[error("Unexpected error: {0}")]
     Unexpected(String),
+
+    #[error("File not found: {0}")]
+    FileNotFound(String),
 
     #[error("Other error: {0}")]
     Other(String),

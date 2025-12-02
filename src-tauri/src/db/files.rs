@@ -109,6 +109,48 @@ pub fn get_file_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Optio
     Ok(existing)
 }
 
+pub fn get_file_by_id(tx: &Transaction, file_id: &i64) -> AppResult<Option<FileEntry>> {
+    let mut stmt = tx.prepare(
+        r#"
+        SELECT
+            id,
+            media_id,
+            rel_path,
+            dir_path,
+            file_name,
+            ext,
+            size_bytes,
+            mtime,
+            last_seen_mtime,
+            is_reviewed,
+            created_at,
+            updated_at
+        FROM files
+        WHERE id = ?1
+        "#,
+    )?;
+
+    let existing = stmt
+        .query_row(params![file_id], |row| {
+            Ok(FileEntry {
+                id: row.get(0)?,
+                media_id: row.get(1)?,
+                rel_path: row.get(2)?,
+                dir_path: row.get(3)?,
+                file_name: row.get(4)?,
+                ext: row.get(5)?,
+                size_bytes: row.get(6)?,
+                mtime: row.get(7)?,
+                last_seen_mtime: row.get(8)?,
+                is_reviewed: row.get::<_, i64>(9)? != 0,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
+            })
+        }).optional()?;
+
+    Ok(existing)
+}
+
 pub fn insert_file_row(tx: &Transaction, new_file: &NewFileRecord) -> AppResult<i64> {
     tx.execute(r#"
         INSERT INTO files (
@@ -159,11 +201,23 @@ pub fn update_file_row(tx: &Transaction, rel_path: &str, size_bytes: &i64, mtime
     Ok(())
 }
 
-pub fn update_file_last_seen(tx: &Transaction, mtime: &i64, now: &i64) -> AppResult<()> {
+pub fn update_file_last_seen(tx: &Transaction, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE files
-        SET last_seen_mtime = ?1, updated_at = ?2
-    "#, params![mtime, now])?;
+        SET last_seen_mtime = ?1,
+            updated_at = ?2
+        WHERE rel_path = ?3
+    "#, params![mtime, now, rel_path])?;
+    Ok(())
+}
+
+pub fn update_file_media_id(tx: &Transaction, file_id: i64, media_id: i64, now: i64) -> AppResult<()> {
+    tx.execute(r#"
+        UPDATE files
+        SET media_id = ?1,
+            updated_at = ?2
+        WHERE id = ?3
+    "#, params![media_id, now, file_id])?;
     Ok(())
 }
 
@@ -185,7 +239,7 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
                 entry.mtime = mtime;
             } else {
                 // untouched but seen in this scan
-                update_file_last_seen(tx, &mtime, &now)?;
+                update_file_last_seen(tx, &rel_path, &mtime, &now)?;
             }
 
             entry.last_seen_mtime = mtime;

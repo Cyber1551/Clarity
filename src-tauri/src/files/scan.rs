@@ -5,6 +5,7 @@ use walkdir::WalkDir;
 use crate::core::constants::UNSORTED_DIRECTORY;
 use crate::core::error::AppResult;
 use crate::db;
+use crate::db::jobs::EnqueueJobRequest;
 use crate::db::schema::DbConn;
 use crate::filesystem::path::{get_rel_path, path_to_str};
 use crate::jobs::JobType;
@@ -52,7 +53,14 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
         if result.is_new || result.mtime_changed {
             // new or changed file detected: queue a job
             println!("(scan) New or changed file detected: {}", rel_path_str.to_string());
-            db::jobs::enqueue_job(&tx, JobType::Hash, &result.file_entry)?;
+
+            let file_entry = result.file_entry;
+            db::jobs::enqueue_job(&tx, JobType::Hash, &EnqueueJobRequest {
+                file_id: file_entry.id,
+                media_id: None,
+                rel_path: rel_path_str,
+                mtime: file_entry.mtime,
+            })?;
         }
     }
 

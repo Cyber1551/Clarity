@@ -43,7 +43,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
     conn.execute_batch(r#"
         CREATE TABLE IF NOT EXISTS media (
             id                  INTEGER PRIMARY KEY,
-            content_hash        TEXT UNIQUE,
+            content_hash        TEXT NOT NULL UNIQUE,
             media_type          TEXT NOT NULL,
             width               INTEGER,
             height              INTEGER,
@@ -55,8 +55,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
             updated_at          INTEGER NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS idx_media_hash_status ON media(hash_status);
-        CREATE INDEX IF NOT EXISTS idx_media_type ON media(media_type);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_media_content_hash ON media(content_hash);
     "#)?; // AppError::Database
 
     // `Files` table represent each physical file and hardlink on disk. Does not contain files in the .objects folder
@@ -77,8 +76,6 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_files_media_id ON files(media_id);
-        CREATE INDEX IF NOT EXISTS idx_files_dir_path ON files(dir_path);
-        CREATE INDEX IF NOT EXISTS idx_files_is_reviewed ON files(is_reviewed);
     "#)?; // AppError::Database
 
     // `Thumbnails` table hold all thumbnail data for each unique piece of media content.
@@ -110,9 +107,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
             updated_at          INTEGER NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS idx_jobs_status_type ON jobs(status, job_type);
-        CREATE INDEX IF NOT EXISTS idx_jobs_media_id ON jobs(media_id);
-        CREATE INDEX IF NOT EXISTS idx_jobs_priority ON jobs(priority);
+        CREATE INDEX IF NOT EXISTS idx_jobs_status_priority_created ON jobs(status, priority, created_at);
     "#)?; // AppError::Database
 
     Ok(())

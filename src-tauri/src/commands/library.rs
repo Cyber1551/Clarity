@@ -1,11 +1,10 @@
-use rusqlite::fallible_iterator::FallibleIterator;
 use tauri::State;
 use crate::core::config::{self, AppConfigDto};
 use crate::core::error::AppError;
 use tauri_plugin_dialog::DialogExt;
 use crate::files::scan::scan_unsorted;
 use crate::filesystem::directory;
-use crate::jobs::JobWorkerManager;
+use crate::jobs::runner::JobWorkerManager;
 
 /// - Ok(AppConfigDta) returns the configuration data for the app (such as library root folder)
 /// - Err(String) on error
