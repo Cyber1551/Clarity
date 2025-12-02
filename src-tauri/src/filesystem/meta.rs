@@ -63,11 +63,11 @@ pub fn probe_media_metadata(path: &Path, media_type: MediaType) -> AppResult<Pro
 fn probe_image_metadata(path: &Path) -> AppResult<ProbedMetadata> {
     // Just need dimensions; no need to fully decode to RGBA
     let img = ImageReader::open(path)
-        .map_err(|e| AppError::Other(format!("open image for metadata {:?}: {e}", path)))?
+        .map_err(|e| AppError::Other(format!("open image for metadata {path:?}: {e}")))?
         .with_guessed_format()
-        .map_err(|e| AppError::Other(format!("guess image format {:?}: {e}", path)))?
+        .map_err(|e| AppError::Other(format!("guess image format {path:?}: {e}")))?
         .into_dimensions()
-        .map_err(|e| AppError::Other(format!("read image dimensions {:?}: {e}", path)))?;
+        .map_err(|e| AppError::Other(format!("read image dimensions {path:?}: {e}")))?;
 
     let (w, h) = img;
     Ok(ProbedMetadata {
@@ -88,7 +88,7 @@ fn probe_video_metadata(path: &Path) -> AppResult<ProbedMetadata> {
         .arg("v:0")
         .arg(path)
         .output()
-        .map_err(|e| AppError::Other(format!("running ffprobe on {:?}: {e}", path)))?;
+        .map_err(|e| AppError::Other(format!("running ffprobe on {path:?}: {e}")))?;
 
     if !output.status.success() {
         return Err(AppError::Other(format!(
@@ -99,12 +99,11 @@ fn probe_video_metadata(path: &Path) -> AppResult<ProbedMetadata> {
     }
 
     let parsed: FfprobeOutput = serde_json::from_slice(&output.stdout)
-        .map_err(|e| AppError::Other(format!("parse ffprobe JSON for {:?}: {e}", path)))?;
+        .map_err(|e| AppError::Other(format!("parse ffprobe JSON for {path:?}: {e}")))?;
 
     let stream = parsed
-        .streams
-        .get(0)
-        .ok_or_else(|| AppError::Other(format!("no video stream in {:?}", path)))?;
+        .streams.first()
+        .ok_or_else(|| AppError::Other(format!("no video stream in {path:?}")))?;
 
     let width = stream.width.map(|w| w as i64);
     let height = stream.height.map(|h| h as i64);

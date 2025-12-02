@@ -26,7 +26,7 @@ pub struct UpsertFileResult {
     pub mtime_changed: bool
 }
 
-pub fn get_all_files(tx: &Transaction) -> AppResult<Vec<FileEntry>> {
+pub fn get_all(tx: &Transaction) -> AppResult<Vec<FileEntry>> {
     let mut stmt = tx.prepare(r#"
         SELECT
             id,
@@ -69,7 +69,7 @@ pub fn get_all_files(tx: &Transaction) -> AppResult<Vec<FileEntry>> {
     Ok(files)
 }
 
-pub fn get_file_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Option<FileEntry>> {
+pub fn get_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Option<FileEntry>> {
     let mut stmt = tx.prepare(
         r#"
         SELECT
@@ -110,7 +110,8 @@ pub fn get_file_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Optio
     Ok(existing)
 }
 
-pub fn get_file_by_id(tx: &Transaction, file_id: &i64) -> AppResult<Option<FileEntry>> {
+/// Retrieves a file entry by its ID.
+pub fn get_by_id(tx: &Transaction, file_id: i64) -> AppResult<Option<FileEntry>> {
     let mut stmt = tx.prepare(
         r#"
         SELECT
@@ -152,7 +153,7 @@ pub fn get_file_by_id(tx: &Transaction, file_id: &i64) -> AppResult<Option<FileE
     Ok(existing)
 }
 
-pub fn insert_file_row(tx: &Transaction, new_file: &NewFileRecord) -> AppResult<i64> {
+pub fn insert(tx: &Transaction, new_file: &NewFileRecord) -> AppResult<i64> {
     tx.execute(r#"
         INSERT INTO files (
             media_id,
@@ -173,8 +174,7 @@ pub fn insert_file_row(tx: &Transaction, new_file: &NewFileRecord) -> AppResult<
             0,
             ?7, ?7
         )
-     "#,
-params![
+    "#, params![
             new_file.rel_path,
             new_file.dir_path,
             new_file.file_name,
@@ -189,7 +189,7 @@ params![
     Ok(id)
 }
 
-pub fn update_file_row(tx: &Transaction, rel_path: &str, size_bytes: &i64, mtime: &i64, now: &i64) -> AppResult<()> {
+pub fn update(tx: &Transaction, rel_path: &str, size_bytes: &i64, mtime: &i64, now: &i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE files
         SET
@@ -202,7 +202,7 @@ pub fn update_file_row(tx: &Transaction, rel_path: &str, size_bytes: &i64, mtime
     Ok(())
 }
 
-pub fn update_file_last_seen(tx: &Transaction, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
+pub fn update_last_seen(tx: &Transaction, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE files
         SET last_seen_mtime = ?1,
@@ -212,7 +212,7 @@ pub fn update_file_last_seen(tx: &Transaction, rel_path: &str, mtime: &i64, now:
     Ok(())
 }
 
-pub fn update_file_media_id(tx: &Transaction, file_id: i64, media_id: i64, now: i64) -> AppResult<()> {
+pub fn update_media_id(tx: &Transaction, file_id: i64, media_id: i64, now: i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE files
         SET media_id = ?1,
@@ -226,12 +226,12 @@ pub fn update_file_media_id(tx: &Transaction, file_id: i64, media_id: i64, now: 
 ///
 /// Updates existing files if mtime or size changed, creates new records otherwise.
 /// Returns flags indicating if the file is new or modified to help decide if jobs should be enqueued.
-pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppResult<UpsertFileResult> {
+pub fn upsert(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppResult<UpsertFileResult> {
     let now = now_ms();
     let size_bytes = meta::get_file_size(full_path)?;
     let mtime = meta::get_mtime(full_path)?;
     debug!("Upserting file: {} (size={}, mtime={})", rel_path, size_bytes, mtime);
-    let existing = get_file_by_rel_path(tx, rel_path)?;
+    let existing = get_by_rel_path(tx, rel_path)?;
 
     match existing {
         Some(mut entry) => {
@@ -241,12 +241,12 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
             if mtime_changed {
                 debug!("File changed: {} (old_mtime={}, new_mtime={}, old_size={}, new_size={})",
                        rel_path, entry.mtime, mtime, entry.size_bytes, size_bytes);
-                update_file_row(tx, &rel_path, &size_bytes, &mtime, &now)?;
+                update(tx, rel_path, &size_bytes, &mtime, &now)?;
                 entry.size_bytes = size_bytes;
                 entry.mtime = mtime;
             } else {
                 // untouched but seen in this scan
-                update_file_last_seen(tx, &rel_path, &mtime, &now)?;
+                update_last_seen(tx, rel_path, &mtime, &now)?;
             }
 
             entry.last_seen_mtime = mtime;
@@ -273,7 +273,7 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
                 now,
             };
 
-            let new_file_id = insert_file_row(tx, &new_file)?;
+            let new_file_id = insert(tx, &new_file)?;
             debug!("Inserted new file with id={}", new_file_id);
             let entry = FileEntry {
                 id: new_file_id,
@@ -299,23 +299,25 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
     }
 }
 
-pub fn delete_file_by_id(trans: &Transaction, file_id: i64) -> AppResult<()> {
-    trans.execute(r#"DELETE FROM files WHERE id = ?1"#, params![file_id])?;
+/// Deletes a file entry by its ID.
+pub fn delete_by_id(tx: &Transaction, file_id: i64) -> AppResult<()> {
+    tx.execute(r#"DELETE FROM files WHERE id = ?1"#, params![file_id])?;
     Ok(())
 }
 
-pub fn delete_file_by_rel_path(trans: &Transaction, rel_path: &str) -> AppResult<()> {
-    trans.execute(r#"DELETE FROM files WHERE rel_path = ?1"#, params![rel_path])?;
+/// Deletes a file entry by its relative path.
+pub fn delete_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<()> {
+    tx.execute(r#"DELETE FROM files WHERE rel_path = ?1"#, params![rel_path])?;
     Ok(())
 }
 
 /// Removes files from the database that are not in the seen set.
 ///
 /// Uses an efficient NOT IN query to delete all missing files in one operation.
-pub fn remove_deleted_files(trans: &Transaction, seen_rel_paths: &HashSet<String>) -> AppResult<()> {
+pub fn remove_deleted_files(tx: &Transaction, seen_rel_paths: &HashSet<String>) -> AppResult<()> {
     if seen_rel_paths.is_empty() {
         // If no files were seen, delete all files
-        let deleted = trans.execute("DELETE FROM files", [])?;
+        let deleted = tx.execute("DELETE FROM files", [])?;
         tracing::info!("Removed {} files that no longer exist", deleted);
         return Ok(());
     }
@@ -329,19 +331,19 @@ pub fn remove_deleted_files(trans: &Transaction, seen_rel_paths: &HashSet<String
             .collect::<Vec<_>>()
             .join(",");
 
-        let query = format!("DELETE FROM files WHERE rel_path NOT IN ({})", placeholders);
+        let query = format!("DELETE FROM files WHERE rel_path NOT IN ({placeholders})");
 
         // Convert HashSet to Vec for rusqlite
         let rel_paths: Vec<&str> = seen_rel_paths.iter().map(|s| s.as_str()).collect();
         let params = rusqlite::params_from_iter(rel_paths);
 
-        let deleted = trans.execute(&query, params)?;
+        let deleted = tx.execute(&query, params)?;
         if deleted > 0 {
             tracing::info!("Removed {} files that no longer exist", deleted);
         }
     } else {
-        // For very large sets, fall back to the old approach
-        let mut stmt = trans.prepare("SELECT id, rel_path FROM files")?;
+        // For very large sets, fall back to iterative approach
+        let mut stmt = tx.prepare("SELECT id, rel_path FROM files")?;
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
         })?;
@@ -356,9 +358,9 @@ pub fn remove_deleted_files(trans: &Transaction, seen_rel_paths: &HashSet<String
 
         if !to_delete.is_empty() {
             let placeholders = to_delete.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let query = format!("DELETE FROM files WHERE id IN ({})", placeholders);
+            let query = format!("DELETE FROM files WHERE id IN ({placeholders})");
             let params = rusqlite::params_from_iter(to_delete);
-            let deleted = trans.execute(&query, params)?;
+            let deleted = tx.execute(&query, params)?;
             tracing::info!("Removed {} files that no longer exist", deleted);
         }
     }

@@ -1,7 +1,8 @@
 use rusqlite::{params, Transaction};
 use crate::core::error::AppResult;
 
-pub fn upsert_thumbnail(tx: &Transaction, content_hash: &str, thumb_blob: &[u8], width: i64, height: i64, now: i64) -> AppResult<()> {
+/// Inserts or updates a thumbnail for a given content hash.
+pub fn upsert(tx: &Transaction, content_hash: &str, thumb_blob: &[u8], width: i64, height: i64, now: i64) -> AppResult<()> {
     tx.execute(r#"
         INSERT INTO thumbnails (
             content_hash,
@@ -19,25 +20,5 @@ pub fn upsert_thumbnail(tx: &Transaction, content_hash: &str, thumb_blob: &[u8],
             updated_at = excluded.updated_at
     "#, params![content_hash, thumb_blob, width, height, now])?;
 
-    Ok(())
-}
-
-pub fn mark_thumbnail_done(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
-    tx.execute(r#"
-        UPDATE media
-        SET thumbnail_status = 'done',
-            updated_at = ?1
-        WHERE id = ?2
-    "#, params![now, media_id])?;
-    Ok(())
-}
-
-pub fn mark_thumbnail_error(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
-    tx.execute(r#"
-        UPDATE media
-        SET thumbnail_status = 'error',
-            updated_at = ?1
-        WHERE id = ?2
-    "#, params![now, media_id])?;
     Ok(())
 }

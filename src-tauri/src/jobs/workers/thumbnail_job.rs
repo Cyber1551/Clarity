@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::Command;
 use image::{GenericImageView, ImageFormat, ImageReader};
 use rusqlite::Transaction;
+use tracing::error;
 use crate::core::constants::{FFMPEG_BIN, THUMBNAIL_SIZE};
 use crate::core::error::{AppError, AppResult};
 use crate::core::time::now_ms;
@@ -12,11 +13,8 @@ use crate::jobs::{JobEntry, JobStatus};
 use crate::media::MediaType;
 
 pub fn handle_thumbnail_job(tx: &Transaction, library_root: &Path, job: &JobEntry) -> AppResult<()> {
-    let media_id_str = job.media_id.map(|id| id.to_string()).unwrap_or("none".to_string());
-    println!("(job) handling thumbnail job id={} for media_id={:?}", job.id, media_id_str);
-
     let media_id = job.require_media_id()?;
-    let media = match db::media::get_by_id(tx, &media_id)? {
+    let media = match db::media::get_by_id(tx, media_id)? {
         Some(m) => m,
         None => return Ok(())
     };
@@ -34,22 +32,19 @@ pub fn handle_thumbnail_job(tx: &Transaction, library_root: &Path, job: &JobEntr
 
     match thumb_result {
         Ok(th) => {
-            thumbnails::upsert_thumbnail(
-                &tx,
+            thumbnails::upsert(
+                tx,
                 &media.content_hash,
                 &th.data,
                 th.width,
                 th.height,
                 now,
             )?;
-            thumbnails::mark_thumbnail_done(&tx, media.id, now)?;
+            db::media::mark_thumbnail_done(tx, media.id, now)?;
         }
         Err(e) => {
-            eprintln!(
-                "thumbnail job {} failed for media {}: {}",
-                job.id, media.id, e
-            );
-            thumbnails::mark_thumbnail_error(&tx, media.id, now)?;
+            error!("Thumbnail job {} failed for media {}: {}", job.id, media.id, e);
+            db::media::mark_thumbnail_error(tx, media.id, now)?;
             return Err(e);
         }
     }
@@ -71,8 +66,7 @@ fn generate_thumbnail(path: &Path, media_type: MediaType) -> AppResult<Generated
             // Best effort: try as image first, then as video, or just bail.
             // For now, bail with error so you see it in logs.
             Err(AppError::Other(format!(
-                "cannot generate thumbnail for unknown media type: {:?}",
-                path
+                "cannot generate thumbnail for unknown media type: {path:?}"
             )))
         }
     }
@@ -92,7 +86,7 @@ fn generate_image_thumbnail(path: &Path) -> AppResult<GeneratedThumbnail> {
     // Encode as WebP via image crate
     thumb
         .write_to(&mut Cursor::new(&mut buf), ImageFormat::WebP)
-        .map_err(|e| AppError::Other(format!("encode webp thumbnail {:?}: {e}", path)))?;
+        .map_err(|e| AppError::Other(format!("encode webp thumbnail {path:?}: {e}")))?;
 
     Ok(GeneratedThumbnail {
         data: buf,
@@ -107,7 +101,7 @@ fn generate_video_thumbnail(path: &Path) -> AppResult<GeneratedThumbnail> {
         .arg("-ss").arg("1.0")
         .arg("-i").arg(path)
         .arg("-frames:v").arg("1")
-        .arg("-vf").arg(format!("scale={}:-1", THUMBNAIL_SIZE))
+        .arg("-vf").arg(format!("scale={THUMBNAIL_SIZE}:-1"))
         .arg("-f").arg("image2pipe")
         .arg("-vcodec").arg("libwebp")
         .arg("-lossless").arg("0")
@@ -115,7 +109,7 @@ fn generate_video_thumbnail(path: &Path) -> AppResult<GeneratedThumbnail> {
         .arg("-compression_level").arg("6")
         .arg("-") // pipe output to stdout
         .output()
-        .map_err(|e| AppError::Other(format!("running ffmpeg for webp thumb on {:?}: {e}", path)))?;
+        .map_err(|e| AppError::Other(format!("running ffmpeg for webp thumb on {path:?}: {e}")))?;
 
     if !output.status.success() {
         return Err(AppError::Other(format!(
@@ -128,14 +122,13 @@ fn generate_video_thumbnail(path: &Path) -> AppResult<GeneratedThumbnail> {
     let webp_bytes = output.stdout;
     if webp_bytes.is_empty() {
         return Err(AppError::Other(format!(
-            "ffmpeg returned empty webp thumbnail for {:?}",
-            path
+            "ffmpeg returned empty webp thumbnail for {path:?}"
         )));
     }
 
     // Read dimensions from the generated WebP
     let img = image::load_from_memory(&webp_bytes)
-        .map_err(|e| AppError::Other(format!("decode webp thumbnail for {:?}: {e}", path)))?;
+        .map_err(|e| AppError::Other(format!("decode webp thumbnail for {path:?}: {e}")))?;
     let (w, h) = img.dimensions();
 
     Ok(GeneratedThumbnail {

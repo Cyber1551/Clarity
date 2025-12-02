@@ -30,7 +30,7 @@ pub fn get_extension(path: &Path) -> &str {
 }
 
 pub fn get_rel_path(path: &Path, library_root: &Path) -> AppResult<PathBuf> {
-    match path.strip_prefix(&library_root) {
+    match path.strip_prefix(library_root) {
         Ok(rel) => Ok(rel.to_path_buf()),
         Err(_) => Err(AppError::LibraryRootMissing)
     }
@@ -55,7 +55,7 @@ pub fn split_path(path: &str) -> PathComponents {
     let dir_path = path
         .parent()
         .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "".to_string());
+        .unwrap_or_default();
 
     PathComponents {
         dir_path,

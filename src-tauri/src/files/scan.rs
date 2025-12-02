@@ -43,7 +43,7 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
             continue; // not a supported media file
         }
 
-        let rel_path = get_rel_path(&path, &library_root)?;
+        let rel_path = get_rel_path(&path, library_root)?;
         let rel_path_str = match path_to_str(&rel_path) {
             Ok(s) => s,
             Err(_) => {
@@ -54,7 +54,7 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
 
         debug!("Found media file: {}", rel_path_str);
 
-        let result = db::files::upsert_file(&tx, &rel_path_str, &path)?;
+        let result = db::files::upsert(&tx, &rel_path_str, &path)?;
         seen_rel_paths.insert(rel_path_str.clone());
 
         if result.is_new || result.mtime_changed {
@@ -62,7 +62,7 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
                   rel_path_str, result.is_new, result.mtime_changed);
 
             let file_entry = result.file_entry;
-            db::jobs::enqueue_job(&tx, JobType::Hash, &EnqueueJobRequest {
+            db::jobs::enqueue(&tx, JobType::Hash, &EnqueueJobRequest {
                 file_id: file_entry.id,
                 media_id: None,
                 rel_path: rel_path_str,

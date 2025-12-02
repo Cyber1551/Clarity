@@ -31,26 +31,11 @@ pub fn dedupe_to_objects(full_path: &Path, library_root: &Path, content_hash: &s
     Ok(())
 }
 
-
 /// Removes the canonical file from the .objects directory for a given content hash.
 pub fn remove_canonical_objects_file(library_root: &Path, content_hash: &str) -> AppResult<()> {
-    let objects_dir = library_root.join(OBJECTS_DIRECTORY);
-
-    // Simple approach: look for "<hash>.*" and delete first match.
-    if let Ok(entries) = fs::read_dir(&objects_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let file_name = entry.file_name();
-                let file_name = file_name.to_string_lossy();
-
-                if file_name.starts_with(content_hash) {
-                    let path = entry.path();
-                    // Ignore errors; if this fails, it's just a leftover file.
-                    let _ = fs::remove_file(&path);
-                    break;
-                }
-            }
-        }
+    if let Some(path) = find_object_by_hash(library_root, content_hash) {
+        // Ignore errors; if this fails, it's just a leftover file.
+        let _ = fs::remove_file(&path);
     }
 
     Ok(())
@@ -58,23 +43,8 @@ pub fn remove_canonical_objects_file(library_root: &Path, content_hash: &str) ->
 
 /// Finds the canonical file path in .objects for a given content hash.
 pub fn find_canonical_objects_file(library_root: &Path, content_hash: &str) -> AppResult<PathBuf> {
-    let objects_dir = library_root.join(OBJECTS_DIRECTORY);
-
-    let entries = fs::read_dir(&objects_dir).map_err(|e| {
-        AppError::InputOutput(e)
-    })?;
-
-    for entry in entries {
-        let entry = entry?;
-        let file_name = entry.file_name();
-        let name = file_name.to_string_lossy();
-
-        if name.starts_with(content_hash) {
-            return Ok(entry.path());
-        }
-    }
-
-    Err(AppError::FileNotFound(format!("canonical object for hash {content_hash} not found in {:?}", objects_dir)))
+    find_object_by_hash(library_root, content_hash)
+        .ok_or_else(|| AppError::FileNotFound(format!("canonical object for hash {content_hash} not found in {OBJECTS_DIRECTORY:?} folder")))
 }
 
 fn canonical_objects_path(library_root: &Path, content_hash: &str, ext: &str) -> PathBuf {
@@ -84,4 +54,20 @@ fn canonical_objects_path(library_root: &Path, content_hash: &str, ext: &str) ->
     } else {
         objects_dir.join(format!("{content_hash}.{ext}"))
     }
+}
+
+fn find_object_by_hash(library_root: &Path, content_hash: &str) -> Option<PathBuf> {
+    let objects_dir = library_root.join(OBJECTS_DIRECTORY);
+
+    fs::read_dir(&objects_dir).ok()?.find_map(|entry| {
+        let entry = entry.ok()?;
+        let file_name = entry.file_name();
+        let name = file_name.to_string_lossy();
+
+        if name.starts_with(content_hash) {
+            Some(entry.path())
+        } else {
+            None
+        }
+    })
 }

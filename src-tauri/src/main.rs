@@ -18,7 +18,7 @@ fn main() {
             let manager = app.state::<JobWorkerManager>();
 
             // Try to read existing library_root from config
-            match config::get_library_root(&handle) {
+            match config::get_library_root(handle) {
                 Ok(root) => {
                     manager.try_start_worker(&root);
                 }
@@ -30,13 +30,10 @@ fn main() {
             }
             Ok(())
         })
-        .on_window_event(|window, event| match event {
+        .on_window_event(|window, event| if let tauri::WindowEvent::CloseRequested { .. } = event {
             // Shutdown the worker thread cleanly on application close
-            tauri::WindowEvent::CloseRequested { .. } => {
-                let manager = window.state::<JobWorkerManager>();
-                manager.shutdown();
-            }
-            _ => {}
+            let manager = window.state::<JobWorkerManager>();
+            manager.shutdown();
         })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())

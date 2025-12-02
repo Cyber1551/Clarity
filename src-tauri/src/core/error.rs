@@ -72,13 +72,13 @@ impl AppError {
         let ctx = context.into();
         match self {
             // Preserve specific error types when adding context
-            AppError::Job(msg) => AppError::Job(format!("{}: {}", ctx, msg)),
-            AppError::HashError(msg) => AppError::HashError(format!("{}: {}", ctx, msg)),
-            AppError::DeduplicationError(msg) => AppError::DeduplicationError(format!("{}: {}", ctx, msg)),
-            AppError::MetadataError(msg) => AppError::MetadataError(format!("{}: {}", ctx, msg)),
-            AppError::ThumbnailError(msg) => AppError::ThumbnailError(format!("{}: {}", ctx, msg)),
-            AppError::Other(msg) => AppError::Other(format!("{}: {}", ctx, msg)),
-            _ => AppError::Other(format!("{}: {}", ctx, self)),
+            AppError::Job(msg) => AppError::Job(format!("{ctx}: {msg}")),
+            AppError::HashError(msg) => AppError::HashError(format!("{ctx}: {msg}")),
+            AppError::DeduplicationError(msg) => AppError::DeduplicationError(format!("{ctx}: {msg}")),
+            AppError::MetadataError(msg) => AppError::MetadataError(format!("{ctx}: {msg}")),
+            AppError::ThumbnailError(msg) => AppError::ThumbnailError(format!("{ctx}: {msg}")),
+            AppError::Other(msg) => AppError::Other(format!("{ctx}: {msg}")),
+            _ => AppError::Other(format!("{ctx}: {self}")),
         }
     }
 }

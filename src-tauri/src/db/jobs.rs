@@ -32,7 +32,7 @@ fn map_row_to_job_entry(row: &Row<'_>) -> rusqlite::Result<JobEntry> {
 }
 
 /// Enqueues a new job into the jobs table.
-pub fn enqueue_job(tx: &Transaction, job_type: JobType, request: &EnqueueJobRequest) -> AppResult<()> {
+pub fn enqueue(tx: &Transaction, job_type: JobType, request: &EnqueueJobRequest) -> AppResult<()> {
     debug!("Enqueuing {} job for file_id={} media_id={:?}",
            job_type, request.file_id, request.media_id);
 
@@ -78,7 +78,7 @@ pub fn enqueue_job(tx: &Transaction, job_type: JobType, request: &EnqueueJobRequ
 ///
 /// Jobs are selected by priority (descending) then creation time (ascending).
 /// Automatically retries jobs in 'error' status and cleans up jobs exceeding MAX_JOB_ATTEMPTS.
-pub fn claim_next_job(tx: &Transaction) -> AppResult<Option<JobEntry>> {
+pub fn claim_next_pending(tx: &Transaction) -> AppResult<Option<JobEntry>> {
     // First, clean up jobs that have exceeded max attempts
     cleanup_failed_jobs(tx)?;
 

@@ -18,7 +18,7 @@ pub fn format_file_size(bytes: i64) -> String {
     } else if bytes >= KB {
         format!("{:.2} KB", bytes as f64 / KB as f64)
     } else {
-        format!("{} B", bytes)
+        format!("{bytes} B")
     }
 }
 
@@ -32,17 +32,17 @@ pub fn format_file_size(bytes: i64) -> String {
 /// ```
 pub fn format_duration_ms(ms: i64) -> String {
     if ms < 1000 {
-        format!("{}ms", ms)
+        format!("{ms}ms")
     } else if ms < 60_000 {
         format!("{:.2}s", ms as f64 / 1000.0)
     } else if ms < 3_600_000 {
         let minutes = ms / 60_000;
         let seconds = (ms % 60_000) / 1000;
-        format!("{}m {}s", minutes, seconds)
+        format!("{minutes}m {seconds}s")
     } else {
         let hours = ms / 3_600_000;
         let minutes = (ms % 3_600_000) / 60_000;
-        format!("{}h {}m", hours, minutes)
+        format!("{hours}h {minutes}m")
     }
 }
 

@@ -19,6 +19,12 @@ pub struct JobWorkerManager {
     metrics: Arc<JobMetrics>,
 }
 
+impl Default for JobWorkerManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JobWorkerManager {
     /// Creates a new JobWorkerManager instance.
     pub fn new() -> Self {
@@ -80,7 +86,7 @@ fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<Jo
 
         // Claim a job in a short transaction and commit so others see the state change
         let tx = DbConn::transaction(&mut conn)?;
-        let claimed_job = db::jobs::claim_next_job(&tx)?;
+        let claimed_job = db::jobs::claim_next_pending(&tx)?;
         let Some(job) = claimed_job else {
             tx.commit()?;
             thread::sleep(WORKER_THREAD_SLEEP_DURATION);

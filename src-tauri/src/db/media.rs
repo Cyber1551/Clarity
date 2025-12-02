@@ -20,7 +20,7 @@ fn map_row_to_media_entry(row: &Row<'_>) -> rusqlite::Result<MediaEntry> {
 }
 
 /// Retrieves a media entry by its ID.
-pub fn get_by_id(tx: &Transaction, media_id: &i64) -> AppResult<Option<MediaEntry>> {
+pub fn get_by_id(tx: &Transaction, media_id: i64) -> AppResult<Option<MediaEntry>> {
     let existing = tx.query_row(r#"
         SELECT
             id,
@@ -66,7 +66,7 @@ pub fn get_by_content_hash(tx: &Transaction, content_hash: &str) -> AppResult<Op
 /// Inserts a new media entry after computing a file's hash.
 ///
 /// Sets hash_status to 'done' and other statuses to 'pending'.
-pub fn insert_media_for_hash(tx: &Transaction, content_hash: &str, media_type: MediaType, now: i64) -> AppResult<MediaEntry> {
+pub fn insert_for_hash(tx: &Transaction, content_hash: &str, media_type: MediaType, now: i64) -> AppResult<MediaEntry> {
     let media_type_str = media_type.to_string();
 
     tx.execute(r#"
@@ -97,7 +97,7 @@ pub fn insert_media_for_hash(tx: &Transaction, content_hash: &str, media_type: M
     "#, params![content_hash, media_type_str, now])?;
 
     let new_media_id = tx.last_insert_rowid();
-    let media_entry = match get_by_id(tx, &new_media_id) {
+    let media_entry = match get_by_id(tx, new_media_id) {
         Ok(Some(media)) => media,
         Ok(None) => panic!("failed to find newly inserted media row"),
         Err(e) => return Err(e),
@@ -107,7 +107,7 @@ pub fn insert_media_for_hash(tx: &Transaction, content_hash: &str, media_type: M
 }
 
 /// Updates a media entry with extracted metadata (dimensions, duration).
-pub fn update_media_metadata(tx: &Transaction, media_id: i64, metadata: &ProbedMetadata, now: i64) -> AppResult<()> {
+pub fn update_metadata(tx: &Transaction, media_id: i64, metadata: &ProbedMetadata, now: i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE media
         SET
@@ -133,10 +133,32 @@ pub fn mark_metadata_error(tx: &Transaction, media_id: i64, now: i64) -> AppResu
     Ok(())
 }
 
+/// Marks thumbnail generation as complete for a media entry.
+pub fn mark_thumbnail_done(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
+    tx.execute(r#"
+        UPDATE media
+        SET thumbnail_status = 'done',
+            updated_at = ?1
+        WHERE id = ?2
+    "#, params![now, media_id])?;
+    Ok(())
+}
+
+/// Marks thumbnail generation as failed for a media entry.
+pub fn mark_thumbnail_error(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
+    tx.execute(r#"
+        UPDATE media
+        SET thumbnail_status = 'error',
+            updated_at = ?1
+        WHERE id = ?2
+    "#, params![now, media_id])?;
+    Ok(())
+}
+
 /// Deletes a media row if no files reference it.
 ///
 /// Returns the content_hash if deleted, None otherwise.
-pub fn delete_unreferenced_media_by_id(tx: &Transaction, media_id: i64) -> AppResult<Option<String>> {
+pub fn delete_unreferenced_by_id(tx: &Transaction, media_id: i64) -> AppResult<Option<String>> {
     // Atomically delete the media row only if it’s still unreferenced.
     // `RETURNING content_hash` gives us the hash if a row was deleted.
     let deleted_hash: Option<String> = tx.query_row(r#"

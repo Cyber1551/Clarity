@@ -7,7 +7,7 @@ pub fn cleanup_orphaned_media(tx: &Transaction, library_root: &Path, old_media_i
     let Some(media_id) = old_media_id else { return Ok(()); };
 
     // DB part (atomic + idempotent)
-    if let Some(content_hash) = db::media::delete_unreferenced_media_by_id(tx, media_id)? {
+    if let Some(content_hash) = db::media::delete_unreferenced_by_id(tx, media_id)? {
         // Filesystem part (best-effort; don’t fail the job on fs issues)
         if let Err(e) = filesystem::objects::remove_canonical_objects_file(library_root, &content_hash) {
             eprintln!("cleanup_orphaned_media: failed to remove canonical object for {content_hash}: {e}");

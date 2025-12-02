@@ -13,7 +13,7 @@ use crate::media::MediaType;
 
 pub fn handle_hash_job(tx: &Transaction, library_root: &Path, job: &JobEntry) -> AppResult<()> {
     let file_id = job.require_file_id()?;
-    let Some(file) = db::files::get_file_by_id(tx, &file_id)? else {
+    let Some(file) = db::files::get_by_id(tx, file_id)? else {
         // File gone; just return so job is marked done.
         return Ok(());
     };
@@ -42,11 +42,11 @@ pub fn handle_hash_job(tx: &Transaction, library_root: &Path, job: &JobEntry) ->
     let media = if let Some(m) = existing_media.as_ref() {
         m.clone()
     } else {
-        db::media::insert_media_for_hash(tx, &content_hash, media_type, now)
+        db::media::insert_for_hash(tx, &content_hash, media_type, now)
             .with_context("Failed to create media entry")?
     };
 
-    db::files::update_file_media_id(tx, file.id, media.id, now)?;
+    db::files::update_media_id(tx, file.id, media.id, now)?;
 
     // Canonicalize in .objects/ with hardlink
     filesystem::objects::dedupe_to_objects(&full_path, library_root, &content_hash, &file.ext)
@@ -55,8 +55,8 @@ pub fn handle_hash_job(tx: &Transaction, library_root: &Path, job: &JobEntry) ->
     // Enqueue only if needed
     if existing_media.is_none() || media.metadata_status.is_pending_or_error() || media.thumbnail_status.is_pending_or_error() {
         let req = EnqueueJobRequest { file_id, media_id: Some(media.id), rel_path: file.rel_path.clone(), mtime: file.mtime };
-        db::jobs::enqueue_job(tx, JobType::Metadata, &req)?;
-        db::jobs::enqueue_job(tx, JobType::Thumbnail, &req)?;
+        db::jobs::enqueue(tx, JobType::Metadata, &req)?;
+        db::jobs::enqueue(tx, JobType::Thumbnail, &req)?;
     }
 
     helpers::cleanup_orphaned_media(tx, library_root, job.media_id)?;
