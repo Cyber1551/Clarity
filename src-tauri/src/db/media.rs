@@ -19,6 +19,7 @@ fn map_row_to_media_entry(row: &Row<'_>) -> rusqlite::Result<MediaEntry> {
     })
 }
 
+/// Retrieves a media entry by its ID.
 pub fn get_by_id(tx: &Transaction, media_id: &i64) -> AppResult<Option<MediaEntry>> {
     let existing = tx.query_row(r#"
         SELECT
@@ -40,6 +41,7 @@ pub fn get_by_id(tx: &Transaction, media_id: &i64) -> AppResult<Option<MediaEntr
     Ok(existing)
 }
 
+/// Retrieves a media entry by its content hash.
 pub fn get_by_content_hash(tx: &Transaction, content_hash: &str) -> AppResult<Option<MediaEntry>> {
     let existing = tx.query_row(r#"
         SELECT
@@ -61,6 +63,9 @@ pub fn get_by_content_hash(tx: &Transaction, content_hash: &str) -> AppResult<Op
     Ok(existing)
 }
 
+/// Inserts a new media entry after computing a file's hash.
+///
+/// Sets hash_status to 'done' and other statuses to 'pending'.
 pub fn insert_media_for_hash(tx: &Transaction, content_hash: &str, media_type: MediaType, now: i64) -> AppResult<MediaEntry> {
     let media_type_str = media_type.to_string();
 
@@ -101,6 +106,7 @@ pub fn insert_media_for_hash(tx: &Transaction, content_hash: &str, media_type: M
     Ok(media_entry)
 }
 
+/// Updates a media entry with extracted metadata (dimensions, duration).
 pub fn update_media_metadata(tx: &Transaction, media_id: i64, metadata: &ProbedMetadata, now: i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE media
@@ -116,6 +122,7 @@ pub fn update_media_metadata(tx: &Transaction, media_id: i64, metadata: &ProbedM
     Ok(())
 }
 
+/// Marks metadata extraction as failed for a media entry.
 pub fn mark_metadata_error(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE media
@@ -126,8 +133,9 @@ pub fn mark_metadata_error(tx: &Transaction, media_id: i64, now: i64) -> AppResu
     Ok(())
 }
 
-/// Deletes a media row if no `files` rows reference it anymore.
-/// Returns `Some(content_hash)` when a media row was actually deleted; `None` otherwise.
+/// Deletes a media row if no files reference it.
+///
+/// Returns the content_hash if deleted, None otherwise.
 pub fn delete_unreferenced_media_by_id(tx: &Transaction, media_id: i64) -> AppResult<Option<String>> {
     // Atomically delete the media row only if it’s still unreferenced.
     // `RETURNING content_hash` gives us the hash if a row was deleted.

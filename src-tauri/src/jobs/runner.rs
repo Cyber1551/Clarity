@@ -1,24 +1,34 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
+use tracing::{info, debug, error};
 use crate::core::constants::WORKER_THREAD_SLEEP_DURATION;
 use crate::core::error::AppResult;
 use crate::db;
 use crate::db::schema::DbConn;
 use crate::jobs::{workers, JobType};
 
+/// Manages the lifecycle of background job worker threads.
+///
+/// Ensures only one worker runs per library and provides graceful shutdown.
 pub struct JobWorkerManager {
     started: AtomicBool,
+    shutdown: Arc<AtomicBool>,
 }
 
 impl JobWorkerManager {
+    /// Creates a new JobWorkerManager instance.
     pub fn new() -> Self {
         Self {
             started: AtomicBool::new(false),
+            shutdown: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    /// Start a job worker if it hasn't been started yet.
+    /// Attempts to start a job worker thread if one hasn't been started yet.
+    ///
+    /// Thread-safe and idempotent. Spawns a worker that processes Hash, Metadata, and Thumbnail jobs sequentially.
     pub fn try_start_worker(&self, library_root: &Path) {
         // Only the first caller that sees `false` gets to start workers.
         if self
@@ -27,29 +37,37 @@ impl JobWorkerManager {
             .is_ok()
         {
             // We won the race, actually spawn worker thread
-            println!("Starting job worker");
-            spawn_job_worker(library_root.to_path_buf());
+            info!("Starting job worker for library: {}", library_root.display());
+            spawn_job_worker(library_root.to_path_buf(), self.shutdown.clone());
         } else {
             // Already started, no-op
-            println!("Worker already started, skipping");
+            debug!("Worker already started, skipping");
         }
+    }
+
+    /// Signals the worker thread to shut down gracefully after completing its current job.
+    pub fn shutdown(&self) {
+        info!("Signaling job worker to shut down");
+        self.shutdown.store(true, Ordering::SeqCst);
     }
 }
 
 
-fn spawn_job_worker(library_root: PathBuf) {
+fn spawn_job_worker(library_root: PathBuf, shutdown: Arc<AtomicBool>) {
     thread::spawn(move || {
-        if let Err(e) = worker_loop(library_root) {
-            eprintln!("job worker exited with error: {e}");
+        if let Err(e) = worker_loop(library_root, shutdown) {
+            error!("Job worker exited with error: {}", e);
         }
     });
 }
 
-fn worker_loop(library_root: PathBuf) -> AppResult<()> {
+fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>) -> AppResult<()> {
     let mut conn = DbConn::new(&library_root)?;
 
-    loop {
-        println!("(job) worker loop started");
+    info!("Job worker loop started");
+
+    while !shutdown.load(Ordering::Relaxed) {
+        debug!("Checking for pending jobs");
 
         // Claim a job in a short transaction and commit so others see the state change
         let tx = DbConn::transaction(&mut conn)?;
@@ -60,7 +78,7 @@ fn worker_loop(library_root: PathBuf) -> AppResult<()> {
             continue;
         };
 
-        println!("(job) claimed job: {:?}", job);
+        info!("Claimed job: id={} type={:?} file_id={:?}", job.id, job.job_type, job.file_id);
 
         let result = match job.job_type {
             JobType::Hash => workers::handle_hash_job(&tx, &library_root, &job),
@@ -72,8 +90,10 @@ fn worker_loop(library_root: PathBuf) -> AppResult<()> {
             Ok(_) => {
                 db::jobs::mark_job_done(&tx, job.id)?;
                 tx.commit()?;
+                info!("Job completed successfully: id={} type={:?}", job.id, job.job_type);
             }
             Err(e) => {
+                error!("Job failed: id={} type={:?} error={}", job.id, job.job_type, e);
                 tx.rollback()?;
                 // ensure the job is marked with an error in a new short transaction
                 let tx1 = conn.transaction()?;
@@ -82,4 +102,7 @@ fn worker_loop(library_root: PathBuf) -> AppResult<()> {
             }
         }
     }
+
+    info!("Job worker shutting down gracefully");
+    Ok(())
 }

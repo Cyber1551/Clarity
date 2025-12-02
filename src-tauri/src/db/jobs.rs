@@ -1,13 +1,16 @@
 use rusqlite::{params, OptionalExtension, Row, Transaction};
+use tracing::{debug, warn};
+use crate::core::constants::MAX_JOB_ATTEMPTS;
 use crate::core::error::AppResult;
 use crate::core::time::now_ms;
-use crate::jobs::{JobEntry, JobStatus, JobType};
-use crate::media::MediaEntry;
+use crate::jobs::{JobEntry, JobType};
 
+/// Parameters for enqueueing a background job.
 pub struct EnqueueJobRequest {
     pub file_id: i64,
     pub media_id: Option<i64>,
     pub rel_path: String,
+    /// Modification time at queue time, used to detect stale jobs
     pub mtime: i64,
 }
 
@@ -28,9 +31,10 @@ fn map_row_to_job_entry(row: &Row<'_>) -> rusqlite::Result<JobEntry> {
     })
 }
 
+/// Enqueues a new job into the jobs table.
 pub fn enqueue_job(tx: &Transaction, job_type: JobType, request: &EnqueueJobRequest) -> AppResult<()> {
-    let media_id_str = request.media_id.map(|id| id.to_string()).unwrap_or("none".to_string());
-    println!("(job) Enqueueing {} job for file id={} with media id {}", job_type, request.file_id, media_id_str);
+    debug!("Enqueuing {} job for file_id={} media_id={:?}",
+           job_type, request.file_id, request.media_id);
 
     tx.execute(r#"
         INSERT INTO jobs (
@@ -70,13 +74,21 @@ pub fn enqueue_job(tx: &Transaction, job_type: JobType, request: &EnqueueJobRequ
     Ok(())
 }
 
+/// Claims the next pending job from the queue and marks it as processing.
+///
+/// Jobs are selected by priority (descending) then creation time (ascending).
+/// Automatically retries jobs in 'error' status and cleans up jobs exceeding MAX_JOB_ATTEMPTS.
 pub fn claim_next_job(tx: &Transaction) -> AppResult<Option<JobEntry>> {
+    // First, clean up jobs that have exceeded max attempts
+    cleanup_failed_jobs(tx)?;
+
     let now = now_ms();
     let mut stmt = tx.prepare(r#"
         WITH pick AS (
           SELECT id
           FROM jobs
-          WHERE status = 'pending'
+          WHERE status IN ('pending', 'error')
+            AND attempts < ?1
           ORDER BY priority DESC, created_at ASC
           LIMIT 1
         )
@@ -84,7 +96,7 @@ pub fn claim_next_job(tx: &Transaction) -> AppResult<Option<JobEntry>> {
         SET
             status = 'processing',
             attempts = attempts + 1,
-            updated_at = ?1
+            updated_at = ?2
         WHERE id = (SELECT id FROM pick)
         RETURNING
           id,
@@ -101,10 +113,26 @@ pub fn claim_next_job(tx: &Transaction) -> AppResult<Option<JobEntry>> {
           updated_at
     "#)?;
 
-    let result = stmt.query_row(params![now], map_row_to_job_entry).optional()?;
+    let result = stmt.query_row(params![MAX_JOB_ATTEMPTS, now], map_row_to_job_entry).optional()?;
     Ok(result)
 }
 
+/// Deletes jobs that have exceeded the maximum number of retry attempts.
+fn cleanup_failed_jobs(tx: &Transaction) -> AppResult<()> {
+    let deleted = tx.execute(r#"
+        DELETE FROM jobs
+        WHERE attempts >= ?1
+          AND status = 'error'
+    "#, params![MAX_JOB_ATTEMPTS])?;
+
+    if deleted > 0 {
+        warn!("Cleaned up {} jobs that exceeded max retry attempts", deleted);
+    }
+
+    Ok(())
+}
+
+/// Marks a job as complete by deleting it from the jobs table.
 pub fn mark_job_done(tx: &Transaction, job_id: i64) -> AppResult<()> {
     tx.execute(r#"
         DELETE FROM jobs
@@ -113,6 +141,9 @@ pub fn mark_job_done(tx: &Transaction, job_id: i64) -> AppResult<()> {
     Ok(())
 }
 
+/// Marks a job as failed with an error message.
+///
+/// The job will be retried if it hasn't exceeded MAX_JOB_ATTEMPTS.
 pub fn mark_job_error(tx: &Transaction, job_id: i64, msg: &str) -> AppResult<()> {
     let now = now_ms();
     tx.execute(

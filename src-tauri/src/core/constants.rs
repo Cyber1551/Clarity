@@ -3,6 +3,9 @@ pub const FFMPEG_BIN: &str = "bin/ffmpeg";
 pub const FFPROBE_BIN: &str = "bin/ffprobe";
 pub const WORKER_THREAD_SLEEP_DURATION: std::time::Duration = std::time::Duration::from_millis(1000);
 
+// Job processing
+pub const MAX_JOB_ATTEMPTS: i32 = 3;
+
 // Database
 pub const DB_NAME: &str = ".media-filesystem.sqlite3";
 

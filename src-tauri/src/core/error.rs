@@ -2,8 +2,10 @@ use std::path::PathBuf;
 use image;
 use thiserror::Error;
 
+/// Result type alias using AppError.
 pub type AppResult<T> = Result<T, AppError>;
 
+/// Application-wide error type.
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("Scan error: {0}")]
@@ -44,9 +46,9 @@ pub enum AppError {
 }
 
 impl AppError {
+    /// Returns a string representation of the error for logging purposes.
     pub fn report(&self) -> String {
-        eprintln!("\n============= AppError =============");
-        eprintln!("{}", self);
+        tracing::error!("AppError occurred: {}", self);
         self.to_string()
     }
 }

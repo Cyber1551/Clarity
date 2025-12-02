@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 use rusqlite::Transaction;
+use tracing::{info, debug, warn};
 use walkdir::WalkDir;
 use crate::core::constants::UNSORTED_DIRECTORY;
 use crate::core::error::AppResult;
@@ -11,15 +12,20 @@ use crate::filesystem::path::{get_rel_path, path_to_str};
 use crate::jobs::JobType;
 use crate::media::{image_utils, video_utils};
 
+/// Scans the unsorted directory for new or modified media files.
+///
+/// Walks the directory tree, creates/updates database entries, and enqueues Hash jobs
+/// for new or changed files. Removes entries for files that no longer exist.
 pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
     let mut conn = DbConn::new(library_root)?;
     let unsorted_dir = library_root.join(UNSORTED_DIRECTORY);
 
     if !unsorted_dir.exists() {
-        // Missing unsorted directory, nothing to scan
+        warn!("Unsorted directory does not exist: {}", unsorted_dir.display());
         return Ok(());
     }
 
+    info!("Starting scan of unsorted directory: {}", unsorted_dir.display());
     let mut seen_rel_paths = HashSet::<String>::new();
     let tx = DbConn::transaction(&mut conn)?;
 
@@ -41,18 +47,20 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
         let rel_path = get_rel_path(&path, &library_root)?;
         let rel_path_str = match path_to_str(&rel_path) {
             Ok(s) => s,
-            Err(_) => continue, // This will happen if the path contains invalid UTF-8 characters. Skip the file
+            Err(_) => {
+                warn!("Skipping file with invalid UTF-8 path: {:?}", rel_path);
+                continue;
+            }
         };
 
-        println!("(scan) Walked: {}", rel_path_str.to_string());
+        debug!("Found media file: {}", rel_path_str);
 
         let result = db::files::upsert_file(&tx, &rel_path_str, &path)?;
-        println!("(scan) upserted file: {:?}", result);
         seen_rel_paths.insert(rel_path_str.clone());
 
         if result.is_new || result.mtime_changed {
-            // new or changed file detected: queue a job
-            println!("(scan) New or changed file detected: {}", rel_path_str.to_string());
+            info!("New or changed file detected: {} (new={}, mtime_changed={})",
+                  rel_path_str, result.is_new, result.mtime_changed);
 
             let file_entry = result.file_entry;
             db::jobs::enqueue_job(&tx, JobType::Hash, &EnqueueJobRequest {
@@ -67,6 +75,7 @@ pub fn scan_unsorted(library_root: &Path) -> AppResult<()> {
     delete_missing_files(&tx, &seen_rel_paths)?;
 
     tx.commit()?;
+    info!("Scan completed. Total files found: {}", seen_rel_paths.len());
     Ok(())
 }
 

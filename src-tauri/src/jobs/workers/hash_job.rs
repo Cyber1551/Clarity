@@ -63,7 +63,8 @@ pub fn handle_hash_job(tx: &Transaction, library_root: &Path, job: &JobEntry) ->
 fn compute_blake3_hash(full_path: &Path) -> AppResult<String> {
     let mut file = fs::File::open(full_path)?;
     let mut hasher = blake3::Hasher::new();
-    let mut buf = [0u8; 8192];
+    // Use 64KB buffer for better I/O performance
+    let mut buf = [0u8; 65536];
 
     loop {
         let n = file.read(&mut buf)?;

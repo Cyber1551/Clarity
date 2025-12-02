@@ -5,8 +5,9 @@ use strum::{Display, EnumString};
 use crate::core::constants::{VALID_IMAGE_EXTENSIONS, VALID_VIDEO_EXTENSIONS};
 use crate::jobs::JobStatus;
 
+/// Type of media content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
-#[serde(rename_all = "lowercase")] // Serializes as "image" instead of "Image"
+#[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum MediaType {
     Image,
@@ -15,6 +16,7 @@ pub enum MediaType {
 }
 
 impl MediaType {
+    /// Determines media type from a file extension.
     pub fn from_extension(ext: &str) -> Self {
         let ext_lower = ext.to_lowercase();
         if VALID_IMAGE_EXTENSIONS.contains(&ext_lower.as_str()) {
@@ -40,9 +42,14 @@ impl ToSql for MediaType {
     }
 }
 
+/// Represents unique media content identified by content_hash.
+///
+/// Multiple files can reference the same media entry (deduplication).
+/// Tracks processing status for hashing, metadata extraction, and thumbnail generation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MediaEntry {
     pub id: i64,
+    /// Blake3 hash of the file content
     pub content_hash: String,
     pub media_type: MediaType,
     pub width: Option<i32>,

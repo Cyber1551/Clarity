@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::core::constants::DB_NAME;
 use crate::core::error::{AppResult};
 
+/// Database connection wrapper that auto-configures WAL mode and initializes schema.
 pub struct DbConn(pub Connection);
 
 impl std::ops::Deref for DbConn {
@@ -11,6 +12,23 @@ impl std::ops::Deref for DbConn {
 }
 
 impl DbConn {
+    /// Creates a new database connection and initializes the schema.
+    ///
+    /// # Parameters
+    ///
+    /// - `path` - Path to the library root directory
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(DbConn)` with a configured connection
+    /// - `Err(AppError)` if connection or initialization fails
+    ///
+    /// # Configuration
+    ///
+    /// - WAL mode for better concurrency
+    /// - Foreign keys enabled
+    /// - 5 second busy timeout
+    /// - Memory temp storage
     pub fn new<P: AsRef<Path>>(path: P) -> AppResult<Self> {
         let db_file = path.as_ref().join(DB_NAME);
 
@@ -27,7 +45,6 @@ impl DbConn {
             PRAGMA synchronous = NORMAL;
             PRAGMA temp_store = MEMORY;
             PRAGMA foreign_keys = ON;
-            PRAGMA busy_timeout = 3000; -- 3 seconds
         "#)?;
 
         initialize_schema(&conn)?;

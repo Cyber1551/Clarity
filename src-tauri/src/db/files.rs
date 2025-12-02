@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 use rusqlite::{params, OptionalExtension, Transaction};
+use tracing::debug;
 use crate::filesystem;
 use crate::core::error::AppResult;
 use crate::core::time::now_ms;
@@ -221,19 +222,25 @@ pub fn update_file_media_id(tx: &Transaction, file_id: i64, media_id: i64, now: 
     Ok(())
 }
 
+/// Inserts or updates a file record in the database.
+///
+/// Updates existing files if mtime or size changed, creates new records otherwise.
+/// Returns flags indicating if the file is new or modified to help decide if jobs should be enqueued.
 pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppResult<UpsertFileResult> {
     let now = now_ms();
     let size_bytes = meta::get_file_size(full_path)?;
     let mtime = meta::get_mtime(full_path)?;
-    println!("file: {} size: {} mtime: {}", rel_path, size_bytes, mtime);
+    debug!("Upserting file: {} (size={}, mtime={})", rel_path, size_bytes, mtime);
     let existing = get_file_by_rel_path(tx, rel_path)?;
 
     match existing {
         Some(mut entry) => {
-            println!("file exists in db: {}", entry.rel_path);
+            debug!("File exists in DB: {}", entry.rel_path);
             let mtime_changed = entry.mtime != mtime || entry.size_bytes != size_bytes;
 
             if mtime_changed {
+                debug!("File changed: {} (old_mtime={}, new_mtime={}, old_size={}, new_size={})",
+                       rel_path, entry.mtime, mtime, entry.size_bytes, size_bytes);
                 update_file_row(tx, &rel_path, &size_bytes, &mtime, &now)?;
                 entry.size_bytes = size_bytes;
                 entry.mtime = mtime;
@@ -252,7 +259,7 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
             })
         }
         None => {
-            println!("file does not exist in db: {}", rel_path);
+            debug!("New file discovered: {}", rel_path);
             // Insert a new file row
             let path_components = filesystem::path::split_path(rel_path);
 
@@ -265,10 +272,9 @@ pub fn upsert_file(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppRes
                 mtime,
                 now,
             };
-            println!("new file {:?}", new_file);
 
             let new_file_id = insert_file_row(tx, &new_file)?;
-            println!("new file id {:?}", new_file_id);
+            debug!("Inserted new file with id={}", new_file_id);
             let entry = FileEntry {
                 id: new_file_id,
                 media_id: None,

@@ -3,6 +3,10 @@ use std::path::{Path, PathBuf};
 use crate::core::constants::OBJECTS_DIRECTORY;
 use crate::core::error::{AppError, AppResult};
 
+/// Deduplicates a file to the .objects directory using hard links.
+///
+/// If this is the first time seeing this content hash, moves the file to .objects.
+/// Otherwise, removes the file and creates a hard link to the canonical .objects file.
 pub fn dedupe_to_objects(full_path: &Path, library_root: &Path, content_hash: &str, ext: &str, ) -> AppResult<()> {
     let canonical_path = canonical_objects_path(library_root, content_hash, ext);
 
@@ -28,6 +32,7 @@ pub fn dedupe_to_objects(full_path: &Path, library_root: &Path, content_hash: &s
 }
 
 
+/// Removes the canonical file from the .objects directory for a given content hash.
 pub fn remove_canonical_objects_file(library_root: &Path, content_hash: &str) -> AppResult<()> {
     let objects_dir = library_root.join(OBJECTS_DIRECTORY);
 
@@ -51,7 +56,7 @@ pub fn remove_canonical_objects_file(library_root: &Path, content_hash: &str) ->
     Ok(())
 }
 
-/// Find the canonical file in `.objects` for a given content_hash.
+/// Finds the canonical file path in .objects for a given content hash.
 pub fn find_canonical_objects_file(library_root: &Path, content_hash: &str) -> AppResult<PathBuf> {
     let objects_dir = library_root.join(OBJECTS_DIRECTORY);
 

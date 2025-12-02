@@ -4,9 +4,13 @@
 use tauri::Manager;
 use app::commands::{library};
 use app::core::config;
+use app::core::logging;
 use app::jobs::runner::JobWorkerManager;
 
 fn main() {
+    // Initialize logging
+    logging::init_logging();
+
     tauri::Builder::default()
         .manage(JobWorkerManager::new())
         .setup(|app| {
@@ -21,10 +25,18 @@ fn main() {
                 Err(e) => {
                     // First-run case: the user hasn't chosen a library yet.
                     // We'll start workers later when they pick one.
-                    eprintln!("Job worker not started (library root not set): {}", e);
+                    tracing::info!("Job worker not started (library root not set): {}", e);
                 }
             }
             Ok(())
+        })
+        .on_window_event(|window, event| match event {
+            // Shutdown the worker thread cleanly on application close
+            tauri::WindowEvent::CloseRequested { .. } => {
+                let manager = window.state::<JobWorkerManager>();
+                manager.shutdown();
+            }
+            _ => {}
         })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
