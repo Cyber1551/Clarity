@@ -2,9 +2,11 @@ import Header from "@/components/Header";
 import MainContent from "@/components/MainContent";
 import { Box, Button, Center, Spinner, Tabs } from "@chakra-ui/react";
 import { useConfigStore } from "@/stores/configStore.ts";
+import { useMediaStore } from "@/stores/mediaStore.ts";
 import { useEffect } from "react";
 import { SettingsDialog } from "@/components/SettingsDialog.tsx";
-import { initialize_library_dirs } from "@/api/libraryApi.ts";
+import { initialize_library } from "@/api/libraryApi.ts";
+import { listen } from "@tauri-apps/api/event";
 
 const App = () => {
     const config = useConfigStore(s => s.config);
@@ -12,14 +14,28 @@ const App = () => {
     const error = useConfigStore(s => s.error);
     const initConfig = useConfigStore(s => s.initConfig);
     const pickLibraryRoot = useConfigStore(s => s.pickLibraryRoot);
+    const loadAllMedia = useMediaStore(s => s.loadAllMedia);
 
     useEffect(() => {
         void initConfig();
     }, [initConfig]);
 
+    // Listen for library initialization completion
+    useEffect(() => {
+        const unsubscribe = listen("library-initialized", () => {
+            console.log("Library initialized, loading media...");
+            void loadAllMedia();
+        });
+
+        return () => {
+            unsubscribe.then(fn => fn());
+        };
+    }, [loadAllMedia]);
+
     useEffect(() => {
         if (config?.libraryRoot) {
-            void initialize_library_dirs();
+            // Initialize library (scan files and enqueue jobs)
+            void initialize_library();
         }
     }, [config?.libraryRoot]);
 
@@ -59,7 +75,7 @@ const App = () => {
     return (
         <Box minH={"100vh"}>
             <Tabs.Root
-                defaultValue="dashboard"
+                defaultValue="library"
                 variant={"enclosed"}
                 display="flex"
                 flexDirection="column"

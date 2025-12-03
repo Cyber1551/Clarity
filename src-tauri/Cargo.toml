@@ -19,14 +19,21 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "2", features = [ "protocol-asset"] }
 base64 = "0.22.1"
-rusqlite = { version = "0.30.0", features = ["bundled"] }
+rusqlite = { version = "0.37.0", features = ["bundled"] }
 blake3 = "1.8.2"
 walkdir = "2.5.0"
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
-thiserror = "1.0.65"
-notify = "6.1.1"
+thiserror = "2.0.17"
+notify = "8.2.0"
+strum = { version = "0.27.2", features = ["derive"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[dev-dependencies]
+tempfile = "3.13"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

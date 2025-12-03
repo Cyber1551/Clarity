@@ -28,23 +28,17 @@ const Header: React.FC<HeaderProps> = () => {
                 <Tabs.Trigger value="dashboard">
                     Dashboard
                 </Tabs.Trigger>
-                <Tabs.Trigger value="files">
-                    Files
+                <Tabs.Trigger value="library">
+                    Library
                 </Tabs.Trigger>
-                <Tabs.Trigger value="favorites">
-                    Favorites
-                </Tabs.Trigger>
-                <Tabs.Trigger value="tags">
-                    Tags
+                <Tabs.Trigger value="explore">
+                    Explore
                 </Tabs.Trigger>
                 <Tabs.Trigger value="moments">
                     Moments
                 </Tabs.Trigger>
                 <Tabs.Trigger value="session">
                     Sessions
-                </Tabs.Trigger>
-                <Tabs.Trigger value="search">
-                    Search
                 </Tabs.Trigger>
             </Tabs.List>
 

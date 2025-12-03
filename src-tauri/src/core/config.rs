@@ -1,5 +1,5 @@
 use crate::core::constants::CONFIG_FILE_NAME;
-use crate::errors::{AppError, AppResult};
+use crate::core::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 use tauri::{AppHandle, Manager};
@@ -9,6 +9,7 @@ pub struct AppConfig {
     pub library_root: Option<String>,
 }
 
+// This DTO is used to handle the transfer between the frontend (which uses camelCase) and the backend (which uses snake_case)
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfigDto {
@@ -29,10 +30,10 @@ fn config_path(app: &AppHandle) -> AppResult<PathBuf> {
         .app_config_dir()
         .ok()
         .ok_or_else(|| {
-            AppError::InternalInvariant("No application config directory available".to_string())
+            AppError::Unexpected("No application config directory available".to_string())
         })?;
 
-    fs::create_dir_all(&dir)?; // AppError::Io
+    fs::create_dir_all(&dir)?; // AppError::InputOutput
     Ok(dir.join(CONFIG_FILE_NAME))
 }
 
@@ -43,7 +44,7 @@ pub fn load_config(app: &AppHandle) -> AppResult<AppConfig> {
         return Ok(AppConfig::default());
     }
 
-    let bytes = fs::read(&path)?; // AppError::Io
+    let bytes = fs::read(&path)?; // AppError::InputOutput
     let cfg = serde_json::from_slice(&bytes)?; // AppError::Json
     Ok(cfg)
 }
@@ -51,7 +52,7 @@ pub fn load_config(app: &AppHandle) -> AppResult<AppConfig> {
 pub fn save_config(app: &AppHandle, cfg: &AppConfig) -> AppResult<()> {
     let path = config_path(app)?;
     let json = serde_json::to_vec_pretty(cfg)?; // AppError::Json
-    fs::write(&path, json)?; // AppError::Io
+    fs::write(&path, json)?; // AppError::InputOutput
     Ok(())
 }
 
