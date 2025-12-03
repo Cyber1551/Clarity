@@ -1,33 +1,43 @@
-import FileGrid from '@/components/FileGrid.tsx';
 import { Box, Tabs } from "@chakra-ui/react";
-import FileTree from "@/components/FileTree.tsx";
+import { useEffect } from "react";
+import { useMediaStore } from "@/stores/mediaStore";
+import MediaGrid from "./MediaGrid";
+import { listen } from "@tauri-apps/api/event";
 
 const MainContent = () => {
+    const items = useMediaStore((s) => s.items);
+    const isLoading = useMediaStore((s) => s.isLoading);
+    const error = useMediaStore((s) => s.error);
+    const loadAllMedia = useMediaStore((s) => s.loadAllMedia);
+
+    // Listen for job completion events to refresh media grid
+    useEffect(() => {
+        const unsubscribe = listen("job-completed", (event) => {
+            console.log("Job completed:", event.payload);
+            void loadAllMedia();
+        });
+
+        return () => {
+            unsubscribe.then(fn => fn());
+        };
+    }, [loadAllMedia]);
+
     return (
         <Box as={"main"} flex="1" minH={0} overflowY="auto">
             <Tabs.Content value="dashboard">
                 Dashboard
             </Tabs.Content>
-            <Tabs.Content value="files" className={"flex h-full"} py={0}>
-                <FileTree />
-                <div className="min-w-0 flex-1 flex flex-col">
-                    <FileGrid />
-                </div>
+            <Tabs.Content value="library">
+                <MediaGrid items={items} isLoading={isLoading} error={error} />
             </Tabs.Content>
-            <Tabs.Content value="favorites">
-                Favorites
-            </Tabs.Content>
-            <Tabs.Content value="tags">
-                Tags
+            <Tabs.Content value="explore">
+                Explore
             </Tabs.Content>
             <Tabs.Content value="moments">
                 Moments
             </Tabs.Content>
             <Tabs.Content value="session">
                 Sessions
-            </Tabs.Content>
-            <Tabs.Content value="search">
-                Search
             </Tabs.Content>
         </Box>
     );

@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::Manager;
-use app::commands::{library};
+use app::commands::{library, media};
 use app::core::config;
 use app::core::logging;
 use app::jobs::runner::JobWorkerManager;
@@ -16,6 +16,9 @@ fn main() {
         .setup(|app| {
             let handle = app.handle();
             let manager = app.state::<JobWorkerManager>();
+
+            // Set app handle for event emission
+            manager.set_app_handle(handle.clone());
 
             // Try to read existing library_root from config
             match config::get_library_root(handle) {
@@ -41,7 +44,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             library::get_app_config,
             library::choose_library_root,
-            library::initialize_library
+            library::initialize_library,
+            media::get_all_media
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

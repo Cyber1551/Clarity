@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{Emitter, State};
 use crate::core::config::{self, AppConfigDto};
 use crate::core::error::AppError;
 use tauri_plugin_dialog::DialogExt;
@@ -54,5 +54,9 @@ pub fn initialize_library(app: tauri::AppHandle, _job_worker_manager: State<JobW
     let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
     directory::ensure_core_dirs(&root).map_err(|e: AppError| e.report())?;
     scan_unsorted(&root).map_err(|e: AppError| e.report())?;
+
+    // Emit event to trigger initial media load on frontend
+    let _ = app.emit("library-initialized", ());
+
     Ok(())
 }

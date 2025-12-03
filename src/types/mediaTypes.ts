@@ -1,4 +1,5 @@
-export type MediaType = "image" | "video";
+export type MediaType = "image" | "video" | "unknown";
+export type JobStatus = "pending" | "processing" | "done" | "error";
 
 export interface MediaItem {
     mediaId: number;
@@ -14,9 +15,11 @@ export interface MediaItem {
     height: number | null;
     durationMs: number | null;
 
-    thumbUrl: string | null;
-    thumbWidth: number | null;
-    thumbHeight: number | null;
+    hashStatus: JobStatus;
+    metadataStatus: JobStatus;
+    thumbnailStatus: JobStatus;
+    contentHash: string;
+    thumbnailDataUrl: string;
 }
 
 export interface TreeNode {
