@@ -82,7 +82,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
     conn.execute_batch(r#"
         CREATE TABLE IF NOT EXISTS files (
             id                  INTEGER PRIMARY KEY,
-            media_id            INTEGER REFERENCES media(id) ON DELETE CASCADE,
+            media_id            INTEGER REFERENCES media(id),
             rel_path            TEXT NOT NULL UNIQUE,
             dir_path            TEXT NOT NULL,
             file_name           TEXT NOT NULL,

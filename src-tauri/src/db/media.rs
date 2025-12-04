@@ -156,6 +156,26 @@ pub fn mark_thumbnail_error(tx: &Transaction, media_id: i64, now: i64) -> AppRes
     Ok(())
 }
 
+/// Retrieves all orphaned media entries (media with no file references).
+///
+/// Returns a list of (media_id, content_hash) tuples.
+pub fn get_orphaned_media(tx: &Transaction) -> AppResult<Vec<(i64, String)>> {
+    let mut stmt = tx.prepare(r#"
+        SELECT m.id, m.content_hash
+        FROM media m
+        WHERE NOT EXISTS (
+            SELECT 1 FROM files f WHERE f.media_id = m.id
+        )
+    "#)?;
+
+    let orphaned_media = stmt.query_map([], |row| {
+        Ok((row.get(0)?, row.get(1)?))
+    })?
+    .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(orphaned_media)
+}
+
 /// Deletes a media row if no files reference it.
 ///
 /// Returns the content_hash if deleted, None otherwise.

@@ -9,7 +9,6 @@ interface MediaGridProps {
 }
 
 const MediaGrid = ({ items, isLoading, error }: MediaGridProps) => {
-    console.log("Rendering media grid", items);
     if (isLoading) {
         return (
             <Box
@@ -63,7 +62,7 @@ const MediaGrid = ({ items, isLoading, error }: MediaGridProps) => {
             p={4}
         >
             {items.map((item) => (
-                <MediaCard key={item.mediaId} item={item} />
+                <MediaCard key={item.fileId} item={item} />
             ))}
         </Grid>
     );
