@@ -77,11 +77,21 @@ pub fn delete_file_by_rel_path(tx: &Transaction, library_root: &Path, rel_path: 
     Ok(())
 }
 
-/// Removes deleted files from the database and performs garbage collection on orphaned media.
+/// Removes deleted files from a specific directory subtree (dir_path LIKE `${dir_prefix}%`)
+/// and performs garbage collection on orphaned media.
 ///
-/// Returns the number of files deleted.
-pub fn remove_deleted_files(tx: &Transaction, library_root: &Path, seen_rel_paths: &HashSet<String>) -> AppResult<usize> {
-    let deleted_count = db::files::remove_deleted_files(tx, seen_rel_paths)?;
+/// Only files under the provided dir_prefix are considered for deletion. This prevents
+/// accidental removal of files from other projections (e.g., Sorted/ tag folders) when
+/// reconciling Unsorted.
+///
+/// Returns the number of files deleted under the scoped directory.
+pub fn remove_deleted_files_in_dir(
+    tx: &Transaction,
+    library_root: &Path,
+    dir_prefix: &str,
+    seen_rel_paths: &HashSet<String>,
+) -> AppResult<usize> {
+    let deleted_count = db::files::remove_deleted_files_in_dir_like(tx, dir_prefix, seen_rel_paths)?;
 
     if deleted_count > 0 {
         info!("Removed {} files that no longer exist", deleted_count);

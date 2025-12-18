@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use std::sync::mpsc::RecvTimeoutError;
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info, warn};
@@ -102,7 +103,7 @@ fn run_watcher(library_root: &Path, dirty: Arc<AtomicBool>, shutdown: Arc<Atomic
     watcher.watch(&unsorted_dir, RecursiveMode::Recursive)
         .map_err(|e| crate::core::error::AppError::Other(format!("Failed to watch directory: {e}")))?;
 
-    let mut last_event_time: Option<std::time::Instant> = None;
+    let mut last_event_time: Option<Instant> = None;
 
     loop {
         if shutdown.load(Ordering::Relaxed) {
@@ -116,14 +117,14 @@ fn run_watcher(library_root: &Path, dirty: Arc<AtomicBool>, shutdown: Arc<Atomic
                     Ok(event) => {
                         debug!("Filesystem event: {:?}", event.kind);
                         dirty.store(true, Ordering::Relaxed);
-                        last_event_time = Some(std::time::Instant::now());
+                        last_event_time = Some(Instant::now());
                     }
                     Err(e) => {
                         error!("Watcher error: {}", e);
                     }
                 }
             }
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            Err(RecvTimeoutError::Timeout) => {
                 if let Some(last_time) = last_event_time {
                     if last_time.elapsed() >= WATCHER_DEBOUNCE_DURATION && dirty.load(Ordering::Relaxed) {
                         info!("Debounce elapsed, triggering reconciliation");
@@ -153,7 +154,7 @@ fn run_watcher(library_root: &Path, dirty: Arc<AtomicBool>, shutdown: Arc<Atomic
                     }
                 }
             }
-            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            Err(RecvTimeoutError::Disconnected) => {
                 warn!("Watcher channel disconnected");
                 break;
             }

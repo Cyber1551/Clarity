@@ -152,8 +152,9 @@ pub fn reconcile_unsorted(library_root: &Path) -> AppResult<ReconcileStats> {
         }
     }
 
-    // Phase 2: Remove files that no longer exist on disk
-    stats.deleted_files = crate::files::gc::remove_deleted_files(&tx, library_root, &seen_rel_paths)?;
+    // Phase 2: Remove files that no longer exist on disk, scoped to the Unsorted tree only
+    // IMPORTANT: Do not delete files outside Unsorted during Unsorted reconciliation.
+    stats.deleted_files = crate::files::gc::remove_deleted_files_in_dir(&tx, library_root, UNSORTED_DIRECTORY, &seen_rel_paths)?;
 
     tx.commit()?;
     info!("Reconciliation completed: {}", stats.summary());

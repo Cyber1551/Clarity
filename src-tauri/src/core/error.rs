@@ -38,6 +38,9 @@ pub enum AppError {
     #[error("File not found: {0}")]
     FileNotFound(String),
 
+    #[error("Media item not found: {0}")]
+    NotFound(String),
+
     #[error("Job error: {0}")]
     Job(String),
 

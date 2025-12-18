@@ -65,6 +65,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
             width               INTEGER,
             height              INTEGER,
             duration_ms         INTEGER,
+            reviewed_at         INTEGER,
             hash_status         TEXT NOT NULL DEFAULT 'pending',
             metadata_status     TEXT NOT NULL DEFAULT 'pending',
             thumbnail_status    TEXT NOT NULL DEFAULT 'pending',
@@ -98,6 +99,15 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
         CREATE INDEX IF NOT EXISTS idx_files_media_id ON files(media_id);
         CREATE INDEX IF NOT EXISTS idx_files_dir_path ON files(dir_path);
         CREATE INDEX IF NOT EXISTS idx_files_ext ON files(ext);
+        -- Enforce at most one link per media per directory (ignore NULL media_id)
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_files_media_dir
+            ON files(media_id, dir_path)
+            WHERE media_id IS NOT NULL;
+        -- Enforce at most one Unsorted link across the entire Unsorted tree per media
+        -- Using a LIKE prefix on 'Unsorted%' so any path beginning with the Unsorted root is included
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_unsorted_media
+            ON files(media_id)
+            WHERE media_id IS NOT NULL AND dir_path LIKE 'Unsorted Media%';
     "#)?; // AppError::Database
 
     // `Thumbnails` table hold all thumbnail data for each unique piece of media content.
@@ -132,6 +142,27 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
         CREATE INDEX IF NOT EXISTS idx_jobs_status_priority_created ON jobs(status, priority, created_at);
         CREATE INDEX IF NOT EXISTS idx_jobs_media_id ON jobs(media_id);
         CREATE INDEX IF NOT EXISTS idx_jobs_file_id ON jobs(file_id);
+    "#)?; // AppError::Database
+
+    // Tags (database-first) and media_tags (many-to-many)
+    conn.execute_batch(r#"
+        CREATE TABLE IF NOT EXISTS tags (
+            id          INTEGER PRIMARY KEY,
+            name        TEXT NOT NULL UNIQUE,
+            created_at  INTEGER NOT NULL,
+            updated_at  INTEGER NOT NULL
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+
+        CREATE TABLE IF NOT EXISTS media_tags (
+            media_id    INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            tag_id      INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+            created_at  INTEGER NOT NULL,
+            PRIMARY KEY (media_id, tag_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_media_tags_media_id ON media_tags(media_id);
+        CREATE INDEX IF NOT EXISTS idx_media_tags_tag_id ON media_tags(tag_id);
     "#)?; // AppError::Database
 
     Ok(())

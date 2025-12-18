@@ -52,7 +52,14 @@ fn main() {
             library::get_app_config,
             library::choose_library_root,
             library::initialize_library,
-            media::get_all_media
+            media::get_all_media,
+            media::get_media_feed,
+            media::get_media_detail,
+            media::list_tags,
+            media::create_tag,
+            media::tag_media,
+            media::untag_media,
+            media::mark_media_reviewed,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,11 +1,11 @@
-import { MediaItem } from "@/types/mediaTypes";
+import { MediaFeedItem } from "@/types/mediaTypes";
 import { create } from "zustand";
-import { get_all_media } from "@/api/libraryApi";
+import { get_media_feed } from "@/api/libraryApi";
 
 export type ViewerState = null | { mediaId: number; };
 
 type MediaStoreState = {
-    items: MediaItem[];
+    items: MediaFeedItem[];
     isLoading: boolean;
     error: string | null;
     viewer: ViewerState;
@@ -30,7 +30,7 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
         }
 
         try {
-            const items = await get_all_media();
+            const items = await get_media_feed();
             set({
                 items,
                 isLoading: false,

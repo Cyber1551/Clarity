@@ -117,6 +117,85 @@ pub fn get_by_id(tx: &Transaction, file_id: i64) -> AppResult<Option<FileEntry>>
     Ok(existing)
 }
 
+/// Lists all files rows for a given media_id.
+pub fn list_by_media_id(tx: &Transaction, media_id: i64) -> AppResult<Vec<FileEntry>> {
+    let mut stmt = tx.prepare(r#"
+        SELECT
+            id,
+            media_id,
+            rel_path,
+            dir_path,
+            file_name,
+            ext,
+            size_bytes,
+            mtime,
+            last_seen_mtime,
+            is_reviewed,
+            created_at,
+            updated_at
+        FROM files
+        WHERE media_id = ?1
+    "#)?;
+
+    let rows = stmt.query_map(params![media_id], map_row_to_file_entry)?;
+    let mut files = Vec::new();
+    for r in rows { files.push(r?); }
+    Ok(files)
+}
+
+/// Lists all file rows for a given media_id scoped to a directory path string.
+pub fn list_by_media_and_dir(tx: &Transaction, media_id: i64, dir_path: &str) -> AppResult<Vec<FileEntry>> {
+    let mut stmt = tx.prepare(r#"
+        SELECT
+            id,
+            media_id,
+            rel_path,
+            dir_path,
+            file_name,
+            ext,
+            size_bytes,
+            mtime,
+            last_seen_mtime,
+            is_reviewed,
+            created_at,
+            updated_at
+        FROM files
+        WHERE media_id = ?1 AND dir_path = ?2
+    "#)?;
+
+    let rows = stmt.query_map(params![media_id, dir_path], map_row_to_file_entry)?;
+    let mut files = Vec::new();
+    for r in rows { files.push(r?); }
+    Ok(files)
+}
+
+/// Lists all file rows for a given media_id where the directory path starts with a prefix (LIKE prefix%).
+pub fn list_by_media_in_dir_like(tx: &Transaction, media_id: i64, dir_prefix: &str) -> AppResult<Vec<FileEntry>> {
+    let like_pattern = format!("{}%", dir_prefix);
+    let mut stmt = tx.prepare(r#"
+        SELECT
+            id,
+            media_id,
+            rel_path,
+            dir_path,
+            file_name,
+            ext,
+            size_bytes,
+            mtime,
+            last_seen_mtime,
+            is_reviewed,
+            created_at,
+            updated_at
+        FROM files
+        WHERE media_id = ?1 AND dir_path LIKE ?2
+    "#)?;
+
+    let rows = stmt.query_map(params![media_id, like_pattern], map_row_to_file_entry)?;
+    let mut files = Vec::new();
+    for r in rows { files.push(r?); }
+    Ok(files)
+}
+
 pub fn update_last_seen(tx: &Transaction, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
     tx.execute(r#"
         UPDATE files
@@ -225,6 +304,22 @@ pub fn delete_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Option<
     Ok(file_entry)
 }
 
+/// Sets the reviewed flag for all files that belong to a given media_id.
+pub fn set_reviewed_for_media(tx: &Transaction, media_id: i64, reviewed: bool) -> AppResult<usize> {
+    let now = now_ms();
+    let flag: i64 = if reviewed { 1 } else { 0 };
+    let changed = tx.execute(
+        r#"
+        UPDATE files
+        SET is_reviewed = ?1,
+            updated_at = ?2
+        WHERE media_id = ?3
+    "#,
+        params![flag, now, media_id],
+    )?;
+    Ok(changed as usize)
+}
+
 /// Removes files from the database that are not in the seen set.
 ///
 /// Uses an efficient NOT IN query to delete all missing files in one operation.
@@ -265,6 +360,44 @@ pub fn remove_deleted_files(tx: &Transaction, seen_rel_paths: &HashSet<String>) 
         } else {
             0
         }
+    };
+
+    Ok(deleted_count)
+}
+
+/// Removes file rows under a directory subtree (dir_path LIKE `${dir_prefix}%`) that were not seen.
+///
+/// This is a scoped variant used by directory-specific reconciliation (e.g., Unsorted)
+/// to avoid deleting files from other projections (like Sorted tags).
+pub fn remove_deleted_files_in_dir_like(
+    tx: &Transaction,
+    dir_prefix: &str,
+    seen_rel_paths: &HashSet<String>,
+) -> AppResult<usize> {
+    let like_pattern = format!("{}%", dir_prefix);
+
+    // Strategy: list all candidate rows under the dir LIKE prefix, compute the set to delete,
+    // then perform a single DELETE ... WHERE id IN (...)
+    let mut stmt = tx.prepare("SELECT id, rel_path FROM files WHERE dir_path LIKE ?1")?;
+    let rows = stmt.query_map(params![like_pattern], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+    })?;
+
+    let mut to_delete: Vec<i64> = Vec::new();
+    for r in rows {
+        let (id, rel_path) = r?;
+        if !seen_rel_paths.contains(&rel_path) {
+            to_delete.push(id);
+        }
+    }
+
+    let deleted_count = if to_delete.is_empty() {
+        0
+    } else {
+        let placeholders = to_delete.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let query = format!("DELETE FROM files WHERE id IN ({})", placeholders);
+        let params = rusqlite::params_from_iter(to_delete);
+        tx.execute(&query, params)?
     };
 
     Ok(deleted_count)
