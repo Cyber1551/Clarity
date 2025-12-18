@@ -1,15 +1,14 @@
-import { MediaItem } from "@/types/mediaTypes";
+import { MediaFeedItem } from "@/types/mediaTypes";
 import { Box, Grid, Spinner, Text } from "@chakra-ui/react";
 import MediaCard from "./MediaCard";
 
 interface MediaGridProps {
-    items: MediaItem[];
+    items: MediaFeedItem[];
     isLoading: boolean;
     error: string | null;
 }
 
 const MediaGrid = ({ items, isLoading, error }: MediaGridProps) => {
-    console.log("Rendering media grid", items);
     if (isLoading) {
         return (
             <Box

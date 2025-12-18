@@ -1,7 +1,10 @@
+use std::time::Duration;
+
 pub const CONFIG_FILE_NAME: &str = "config.json";
 pub const FFMPEG_BIN: &str = "bin/ffmpeg";
 pub const FFPROBE_BIN: &str = "bin/ffprobe";
-pub const WORKER_THREAD_SLEEP_DURATION: std::time::Duration = std::time::Duration::from_millis(1000);
+pub const WORKER_THREAD_SLEEP_DURATION: Duration = Duration::from_millis(1000);
+pub const WATCHER_DEBOUNCE_DURATION: Duration = Duration::from_millis(500);
 
 // Job processing
 pub const MAX_JOB_ATTEMPTS: i32 = 3;

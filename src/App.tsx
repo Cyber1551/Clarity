@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { SettingsDialog } from "@/components/SettingsDialog.tsx";
 import { initialize_library } from "@/api/libraryApi.ts";
 import { listen } from "@tauri-apps/api/event";
+import { Viewer } from "@/components/Viewer";
 
 const App = () => {
     const config = useConfigStore(s => s.config);
@@ -90,6 +91,7 @@ const App = () => {
                 {/* Main content area that should fill the remaining space */}
                 <MainContent />
             </Tabs.Root>
+            <Viewer />
             <SettingsDialog />
         </Box>
     );

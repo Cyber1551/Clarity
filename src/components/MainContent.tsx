@@ -10,15 +10,19 @@ const MainContent = () => {
     const error = useMediaStore((s) => s.error);
     const loadAllMedia = useMediaStore((s) => s.loadAllMedia);
 
-    // Listen for job completion events to refresh media grid
+    // Listen for job completion and library change events
     useEffect(() => {
-        const unsubscribe = listen("job-completed", (event) => {
-            console.log("Job completed:", event.payload);
+        const unsubscribeJobCompleted = listen("job-completed", () => {
+            void loadAllMedia();
+        });
+
+        const unsubscribeLibraryChanged = listen("library-changed", () => {
             void loadAllMedia();
         });
 
         return () => {
-            unsubscribe.then(fn => fn());
+            unsubscribeJobCompleted.then(fn => fn());
+            unsubscribeLibraryChanged.then(fn => fn());
         };
     }, [loadAllMedia]);
 

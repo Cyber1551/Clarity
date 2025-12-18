@@ -1,9 +1,11 @@
 use tauri::{Emitter, State};
+use tracing::info;
 use crate::core::config::{self, AppConfigDto};
 use crate::core::error::AppError;
 use tauri_plugin_dialog::DialogExt;
-use crate::files::scan::scan_unsorted;
+use crate::files::scan::reconcile_unsorted;
 use crate::filesystem::directory;
+use crate::filesystem::watcher::FileWatcherManager;
 use crate::jobs::runner::JobWorkerManager;
 
 /// - Ok(AppConfigDta) returns the configuration data for the app (such as library root folder)
@@ -18,7 +20,7 @@ pub fn get_app_config(app: tauri::AppHandle, _job_worker_manager: State<JobWorke
 /// - Ok(None) if the user canceled
 /// - Err(String) on error
 #[tauri::command]
-pub async fn choose_library_root(app: tauri::AppHandle, job_worker_manager: State<'_, JobWorkerManager>) -> Result<Option<String>, String> {
+pub async fn choose_library_root(app: tauri::AppHandle, job_worker_manager: State<'_, JobWorkerManager>, watcher_manager: State<'_, FileWatcherManager>) -> Result<Option<String>, String> {
     let folder = app
         .dialog()
         .file()
@@ -37,6 +39,7 @@ pub async fn choose_library_root(app: tauri::AppHandle, job_worker_manager: Stat
             config::save_config(&app, &cfg).map_err(|e: AppError| e.report())?;
 
             job_worker_manager.try_start_worker(path);
+            watcher_manager.try_start_watcher(path);
         }
         None => {
             return Ok(None)
@@ -46,16 +49,18 @@ pub async fn choose_library_root(app: tauri::AppHandle, job_worker_manager: Stat
     Ok(Some(folder_str))
 }
 
-/// Initializes the library directories required for the application's functionality.
-/// - Ok(()) on success. Idempotent. Will succeed regardless if the folders were missing or already created
+/// Initializes the library and reconciles the Unsorted Media directory.
+/// - Ok(()) on success. Idempotent. Running multiple times only processes changes.
 /// - Err(String) on error
 #[tauri::command]
 pub fn initialize_library(app: tauri::AppHandle, _job_worker_manager: State<JobWorkerManager>) -> Result<(), String>  {
     let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
     directory::ensure_core_dirs(&root).map_err(|e: AppError| e.report())?;
-    scan_unsorted(&root).map_err(|e: AppError| e.report())?;
 
-    // Emit event to trigger initial media load on frontend
+    let stats = reconcile_unsorted(&root).map_err(|e: AppError| e.report())?;
+    info!("Library initialization complete: new={}, modified={}, deleted={}, unchanged={}",
+          stats.new_files, stats.modified_files, stats.deleted_files, stats.unchanged_files);
+
     let _ = app.emit("library-initialized", ());
 
     Ok(())

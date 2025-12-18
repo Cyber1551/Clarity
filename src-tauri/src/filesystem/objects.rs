@@ -41,6 +41,11 @@ pub fn remove_canonical_objects_file(library_root: &Path, content_hash: &str) ->
     Ok(())
 }
 
+/// Checks if the canonical file exists in .objects for a given content hash.
+pub fn canonical_file_exists(library_root: &Path, content_hash: &str) -> bool {
+    find_object_by_hash(library_root, content_hash).is_some()
+}
+
 /// Finds the canonical file path in .objects for a given content hash.
 pub fn find_canonical_objects_file(library_root: &Path, content_hash: &str) -> AppResult<PathBuf> {
     find_object_by_hash(library_root, content_hash)
