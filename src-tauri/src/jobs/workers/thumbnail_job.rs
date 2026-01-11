@@ -2,7 +2,6 @@ use std::io::Cursor;
 use std::path::Path;
 use std::process::Command;
 use image::{GenericImageView, ImageFormat, ImageReader};
-use rusqlite::Transaction;
 use tracing::error;
 use crate::core::constants::{FFMPEG_BIN, THUMBNAIL_SIZE};
 use crate::core::error::{AppError, AppResult};
@@ -12,39 +11,61 @@ use crate::db::thumbnails;
 use crate::jobs::{JobEntry, JobStatus};
 use crate::media::MediaType;
 
-pub fn handle_thumbnail_job(tx: &Transaction, library_root: &Path, job: &JobEntry) -> AppResult<()> {
+use std::sync::Arc;
+use crate::db::pool::DbManager;
+
+pub fn handle_thumbnail_job(db_manager: Arc<DbManager>, library_root: &Path, job: &JobEntry) -> AppResult<()> {
     let media_id = job.require_media_id()?;
-    let media = match db::media::get_by_id(tx, media_id)? {
+    let media = {
+        let mut conn = db_manager.get_connection(library_root)?;
+        let tx = conn.transaction()?;
+        let m = db::media::get_by_id(&tx, media_id)?;
+        tx.commit()?;
+        m
+    };
+    
+    let media = match media {
         Some(m) => m,
         None => return Ok(())
     };
 
-    // If thumbnail already ready, treat as idempotent: just delete job.
+    // If thumbnail already ready, verify blob exists in DB
     if media.thumbnail_status == JobStatus::Done {
-        return Ok(());
+        let conn = db_manager.get_connection(library_root)?;
+        if thumbnails::get_blob(&conn, &media.content_hash)?.is_some() {
+            return Ok(());
+        }
+        // If status is done but blob missing, we fall through and regenerate it
     }
 
     // Locate canonical file
     let canonical_path = filesystem::objects::find_canonical_objects_file(library_root, &media.content_hash)?;
 
+    // HEAVY WORK: generate thumbnail outside transaction and WITHOUT holding a connection
     let thumb_result = generate_thumbnail(&canonical_path, media.media_type);
     let now = now_ms();
 
     match thumb_result {
         Ok(th) => {
+            let mut conn = db_manager.get_connection(library_root)?;
+            let tx = conn.transaction()?;
             thumbnails::upsert(
-                tx,
+                &tx,
                 &media.content_hash,
                 &th.data,
                 th.width,
                 th.height,
                 now,
             )?;
-            db::media::mark_thumbnail_done(tx, media.id, now)?;
+            db::media::mark_thumbnail_done(&tx, media.id, now)?;
+            tx.commit()?;
         }
         Err(e) => {
             error!("Thumbnail job {} failed for media {}: {}", job.id, media.id, e);
-            db::media::mark_thumbnail_error(tx, media.id, now)?;
+            let mut conn = db_manager.get_connection(library_root)?;
+            let tx = conn.transaction()?;
+            db::media::mark_thumbnail_error(&tx, media.id, now)?;
+            tx.commit()?;
             return Err(e);
         }
     }

@@ -1,4 +1,4 @@
-use rusqlite::{params, OptionalExtension, Row, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Row};
 use tracing::{debug, warn};
 use crate::core::constants::MAX_JOB_ATTEMPTS;
 use crate::core::error::AppResult;
@@ -32,11 +32,11 @@ fn map_row_to_job_entry(row: &Row<'_>) -> rusqlite::Result<JobEntry> {
 }
 
 /// Enqueues a new job into the jobs table.
-pub fn enqueue(tx: &Transaction, job_type: JobType, request: &EnqueueJobRequest) -> AppResult<()> {
+pub fn enqueue(conn: &Connection, job_type: JobType, request: &EnqueueJobRequest) -> AppResult<()> {
     debug!("Enqueuing {} job for file_id={} media_id={:?}",
            job_type, request.file_id, request.media_id);
 
-    tx.execute(r#"
+    conn.execute(r#"
         INSERT INTO jobs (
             job_type,
             media_id,
@@ -78,18 +78,18 @@ pub fn enqueue(tx: &Transaction, job_type: JobType, request: &EnqueueJobRequest)
 ///
 /// Jobs are selected by priority (descending) then creation time (ascending).
 /// Automatically retries jobs in 'error' status and cleans up jobs exceeding MAX_JOB_ATTEMPTS.
-pub fn claim_next_pending(tx: &Transaction) -> AppResult<Option<JobEntry>> {
+pub fn claim_next_pending(conn: &Connection) -> AppResult<Option<JobEntry>> {
     // First, clean up jobs that have exceeded max attempts
-    cleanup_failed_jobs(tx)?;
+    cleanup_failed_jobs(conn)?;
 
     let now = now_ms();
-    let mut stmt = tx.prepare(r#"
+    let mut stmt = conn.prepare(r#"
         WITH pick AS (
           SELECT id
           FROM jobs
           WHERE status IN ('pending', 'error')
             AND attempts < ?1
-          ORDER BY priority DESC, created_at ASC
+          ORDER BY priority DESC, created_at DESC
           LIMIT 1
         )
         UPDATE jobs
@@ -118,8 +118,8 @@ pub fn claim_next_pending(tx: &Transaction) -> AppResult<Option<JobEntry>> {
 }
 
 /// Deletes jobs that have exceeded the maximum number of retry attempts.
-fn cleanup_failed_jobs(tx: &Transaction) -> AppResult<()> {
-    let deleted = tx.execute(r#"
+fn cleanup_failed_jobs(conn: &Connection) -> AppResult<()> {
+    let deleted = conn.execute(r#"
         DELETE FROM jobs
         WHERE attempts >= ?1
           AND status = 'error'
@@ -133,8 +133,8 @@ fn cleanup_failed_jobs(tx: &Transaction) -> AppResult<()> {
 }
 
 /// Marks a job as complete by deleting it from the jobs table.
-pub fn mark_job_done(tx: &Transaction, job_id: i64) -> AppResult<()> {
-    tx.execute(r#"
+pub fn mark_job_done(conn: &Connection, job_id: i64) -> AppResult<()> {
+    conn.execute(r#"
         DELETE FROM jobs
         WHERE id = ?1
     "#, params![job_id])?;
@@ -144,9 +144,9 @@ pub fn mark_job_done(tx: &Transaction, job_id: i64) -> AppResult<()> {
 /// Marks a job as failed with an error message.
 ///
 /// The job will be retried if it hasn't exceeded MAX_JOB_ATTEMPTS.
-pub fn mark_job_error(tx: &Transaction, job_id: i64, msg: &str) -> AppResult<()> {
+pub fn mark_job_error(conn: &Connection, job_id: i64, msg: &str) -> AppResult<()> {
     let now = now_ms();
-    tx.execute(
+    conn.execute(
         r#"
         UPDATE jobs
         SET status = 'error',

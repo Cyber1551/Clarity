@@ -5,8 +5,8 @@ import {
     HStack,
     IconButton,
     Input,
-    Kbd,
     Dialog,
+    Image,
     Portal,
     Spinner,
     Tag,
@@ -17,6 +17,7 @@ import { useMediaStore } from "@/stores/mediaStore";
 import { create_tag, get_media_detail, list_tags, tag_media, untag_media, mark_media_reviewed } from "@/api/libraryApi";
 import { MediaDetail, Tag as TagType } from "@/types/mediaTypes";
 import { Plus } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function Viewer() {
     const viewer = useMediaStore((s) => s.viewer);
@@ -30,10 +31,35 @@ export function Viewer() {
     const [newTagName, setNewTagName] = useState("");
     const [isReviewing, setIsReviewing] = useState(false);
 
+    const loadData = async () => {
+        if (!viewer) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const [d, tags] = await Promise.all([
+                get_media_detail(viewer.mediaId),
+                list_tags(),
+            ]);
+            setDetail(d);
+            setAllTags(tags);
+        } catch (e: any) {
+            setError(e?.toString?.() ?? "Failed to load media detail");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        let mounted = true;
-        async function load() {
-            if (!viewer) return;
+        let active = true;
+        async function init() {
+            if (!isOpen || !viewer) {
+                setDetail(null);
+                setAllTags([]);
+                setNewTagName("");
+                setError(null);
+                return;
+            }
+
             setLoading(true);
             setError(null);
             try {
@@ -41,25 +67,21 @@ export function Viewer() {
                     get_media_detail(viewer.mediaId),
                     list_tags(),
                 ]);
-                if (!mounted) return;
+                if (!active) return;
                 setDetail(d);
                 setAllTags(tags);
             } catch (e: any) {
+                if (!active) return;
                 setError(e?.toString?.() ?? "Failed to load media detail");
             } finally {
-                setLoading(false);
+                if (active) setLoading(false);
             }
         }
-        if (isOpen) {
-            void load();
-        } else {
-            setDetail(null);
-            setAllTags([]);
-            setNewTagName("");
-            setError(null);
-        }
+        
+        void init();
+        
         return () => {
-            mounted = false;
+            active = false;
         };
     }, [isOpen, viewer]);
 
@@ -74,12 +96,8 @@ export function Viewer() {
         try {
             const created = await create_tag(name);
             await tag_media(detail.mediaId, created.id);
-            setDetail({ ...detail, tags: [...detail.tags, created] });
-            setAllTags((prev) => {
-                if (prev.find((t) => t.id === created.id)) return prev;
-                return [...prev, created];
-            });
             setNewTagName("");
+            await loadData();
         } catch (e) {
             setError(e?.toString?.() ?? "Failed to create/tag");
         }
@@ -87,11 +105,9 @@ export function Viewer() {
 
     async function handleAddExistingTag(tagId: number) {
         if (!detail) return;
-        const tag = allTags.find((t) => t.id === tagId);
-        if (!tag) return;
         try {
             await tag_media(detail.mediaId, tagId);
-            setDetail({ ...detail, tags: [...detail.tags, tag] });
+            await loadData();
         } catch (e) {
             setError(e?.toString?.() ?? "Failed to tag media");
         }
@@ -101,7 +117,7 @@ export function Viewer() {
         if (!detail) return;
         try {
             await untag_media(detail.mediaId, tagId);
-            setDetail({ ...detail, tags: detail.tags.filter((t) => t.id !== tagId) });
+            await loadData();
         } catch (e) {
             setError(e?.toString?.() ?? "Failed to untag media");
         }
@@ -138,101 +154,143 @@ export function Viewer() {
                             <Dialog.Title>Viewer</Dialog.Title>
                         </Dialog.Header>
                         <Dialog.Body p={0} display="flex" h="calc(80vh - 64px)">
-                            {/* Left: Media preview placeholder (uses thumbnail for now) */}
-                            <Box flex="2" bg="gray.900" display="flex" alignItems="center" justifyContent="center">
-                                {loading && <Spinner color="white" />}
+                            {/* Left: Media preview */}
+                            <Box flex="3" bg="black" display="flex" alignItems="center" justifyContent="center" overflow="hidden">
+                                {loading && <Spinner color="white" size="xl" />}
                                 {!loading && detail && (
-                                    <VStack gap={2} color="white">
-                                        <Text fontSize="sm" color="gray.300">Media ID: {detail.mediaId}</Text>
-                                        <Text fontSize="sm" color="gray.300">Type: {detail.mediaType}</Text>
-                                        <Text fontSize="xs" color="gray.500">Hash: {detail.contentHash.slice(0, 10)}…</Text>
-                                        <Text fontSize="xs" color="gray.500">
-                                            Files: {detail.files.length}
-                                        </Text>
-                                        <Text fontSize="xs" color="gray.500">
-                                            Dimensions: {detail.width ?? "?"} x {detail.height ?? "?"}
-                                        </Text>
-                                    </VStack>
+                                    <Image
+                                        src={`asset://localhost/${detail.contentHash}`}
+                                        alt={detail.contentHash}
+                                        maxW="100%"
+                                        maxH="100%"
+                                        objectFit="contain"
+                                    />
+                                )}
+                                {!loading && !detail && !error && (
+                                    <Text color="gray.500">No media loaded</Text>
                                 )}
                             </Box>
 
-                            {/* Right: Tag editor */}
-                            <Box flex="1" p={4} overflowY="auto" borderLeft="1px solid" borderColor="gray.200">
+                            {/* Right: Sidebar */}
+                            <Box flex="1" p={4} overflowY="auto" borderLeft="1px solid" borderColor="whiteAlpha.200" bg="gray.900">
                                 {error && (
-                                    <Box mb={3} color="red.500">
+                                    <Box mb={3} color="red.400" fontSize="sm">
                                         {error}
                                     </Box>
                                 )}
-                                <VStack align="stretch" gap={4}>
-                                    <Box>
-                                        <Text fontWeight="bold" mb={2}>Tags</Text>
-                                        <HStack gap={2} flexWrap="wrap">
-                                            {detail?.tags.map((t) => (
-                                                <Tag.Root key={t.id} size="md" borderRadius="full" variant="subtle" colorPalette="blue">
-                                                    <Tag.Label>{t.name}</Tag.Label>
-                                                    <Tag.CloseTrigger onClick={() => handleRemoveTag(t.id)} />
-                                                </Tag.Root>
-                                            ))}
-                                            {detail && detail.tags.length === 0 && (
-                                                <Text color="gray.500" fontSize="sm">No tags yet</Text>
-                                            )}
-                                        </HStack>
-                                    </Box>
+                                
+                                {detail && (
+                                    <VStack align="stretch" gap={6}>
+                                        {/* Metadata Section */}
+                                        <Box>
+                                            <Text fontWeight="bold" fontSize="xs" mb={2} color="gray.400" textTransform="uppercase" letterSpacing="wider">Info</Text>
+                                            <VStack align="stretch" gap={1.5}>
+                                                <HStack justify="space-between">
+                                                    <Text fontSize="xs" color="gray.400">Type</Text>
+                                                    <Text fontSize="xs" fontWeight="medium" color="gray.100">{detail.mediaType}</Text>
+                                                </HStack>
+                                                <HStack justify="space-between">
+                                                    <Text fontSize="xs" color="gray.400">Dimensions</Text>
+                                                    <Text fontSize="xs" fontWeight="medium" color="gray.100">{detail.width ?? "?"} × {detail.height ?? "?"}</Text>
+                                                </HStack>
+                                                <HStack justify="space-between">
+                                                    <Text fontSize="xs" color="gray.400">Hash</Text>
+                                                    <Tooltip content={detail.contentHash} showArrow portalled={false}>
+                                                        <Text fontSize="xs" fontWeight="medium" fontFamily="mono" color="gray.100" cursor="help">
+                                                            {detail.contentHash.slice(0, 8)}…
+                                                        </Text>
+                                                    </Tooltip>
+                                                </HStack>
+                                                <HStack justify="space-between">
+                                                    <Text fontSize="xs" color="gray.400">Files</Text>
+                                                    <Text fontSize="xs" fontWeight="medium" color="gray.100">{detail.files.length}</Text>
+                                                </HStack>
+                                            </VStack>
+                                        </Box>
 
-                                    <Box>
-                                        <Text fontWeight="bold" mb={2}>Add Tag</Text>
-                                        <HStack>
-                                            <Input
-                                                placeholder="Create new tag"
-                                                value={newTagName}
-                                                onChange={(e) => setNewTagName(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                        e.preventDefault();
-                                                        void handleCreateAndAddTag();
-                                                    }
-                                                }}
-                                            />
-                                            <IconButton aria-label="Create tag" onClick={() => void handleCreateAndAddTag()}>
-                                                <Plus size={16} />
-                                            </IconButton>
-                                        </HStack>
-                                        {availableTags.length > 0 && (
-                                            <HStack mt={3} gap={2} flexWrap="wrap">
-                                                {availableTags.map((t) => (
-                                                    <Button key={t.id} size="sm" onClick={() => void handleAddExistingTag(t.id)}>
-                                                        + {t.name}
-                                                    </Button>
+                                        {/* Tags Section */}
+                                        <Box>
+                                            <Text fontWeight="bold" fontSize="xs" mb={2} color="gray.400" textTransform="uppercase" letterSpacing="wider">Tags</Text>
+                                            <HStack gap={1} flexWrap="wrap" mb={3}>
+                                                {detail.tags.map((t) => (
+                                                    <Tag.Root key={t.id} size="sm" borderRadius="full" variant="subtle" colorPalette="blue">
+                                                        <Tag.Label>{t.name}</Tag.Label>
+                                                        <Tag.CloseTrigger onClick={() => handleRemoveTag(t.id)} />
+                                                    </Tag.Root>
                                                 ))}
+                                                {detail.tags.length === 0 && (
+                                                    <Text color="gray.500" fontSize="xs" fontStyle="italic">No tags yet</Text>
+                                                )}
                                             </HStack>
-                                        )}
-                                        {availableTags.length === 0 && allTags.length > 0 && (
-                                            <Text mt={2} fontSize="xs" color="gray.500">All existing tags already applied</Text>
-                                        )}
-                                    </Box>
 
-                                    <Box color="gray.500" fontSize="xs">
-                                        <Text>Tips:</Text>
-                                        <Text>
-                                            • Press <Kbd>Enter</Kbd> to create a new tag quick.
-                                        </Text>
-                                    </Box>
-                                </VStack>
+                                            <HStack gap={1} mb={2}>
+                                                <Input
+                                                    size="sm"
+                                                    placeholder="Add tag..."
+                                                    value={newTagName}
+                                                    onChange={(e) => setNewTagName(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            void handleCreateAndAddTag();
+                                                        }
+                                                    }}
+                                                    bg="whiteAlpha.50"
+                                                    borderColor="whiteAlpha.200"
+                                                    _focus={{ borderColor: "blue.500" }}
+                                                />
+                                                <IconButton 
+                                                    size="sm" 
+                                                    aria-label="Add tag" 
+                                                    variant="ghost"
+                                                    onClick={() => void handleCreateAndAddTag()}
+                                                    disabled={!newTagName.trim()}
+                                                    color="gray.400"
+                                                >
+                                                    <Plus size={14} />
+                                                </IconButton>
+                                            </HStack>
+
+                                            {availableTags.length > 0 && (
+                                                <Box>
+                                                    <Text fontSize="2xs" color="gray.500" mb={1.5} textTransform="uppercase">Suggested</Text>
+                                                    <HStack gap={1} flexWrap="wrap">
+                                                        {availableTags.slice(0, 12).map((t) => (
+                                                            <Button 
+                                                                key={t.id} 
+                                                                size="2xs" 
+                                                                variant="outline" 
+                                                                onClick={() => void handleAddExistingTag(t.id)}
+                                                                borderRadius="full"
+                                                                fontWeight="normal"
+                                                                fontSize="2xs"
+                                                                color="gray.300"
+                                                                borderColor="whiteAlpha.300"
+                                                                _hover={{ bg: "whiteAlpha.100" }}
+                                                            >
+                                                                {t.name}
+                                                            </Button>
+                                                        ))}
+                                                    </HStack>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    </VStack>
+                                )}
                             </Box>
                         </Dialog.Body>
-                        <Dialog.Footer>
-                            <Button onClick={() => void handleMarkReviewed()} disabled={isReviewing}>
-                                {isReviewing ? (
-                                    <HStack gap={2}>
-                                        <Spinner size="sm" />
-                                        <Text>Marking…</Text>
-                                    </HStack>
-                                ) : (
-                                    "Mark as reviewed"
-                                )}
+                        <Dialog.Footer gap={3}>
+                            <Button
+                                colorPalette="blue"
+                                size="sm"
+                                loading={isReviewing}
+                                onClick={() => void handleMarkReviewed()}
+                                disabled={!detail}
+                            >
+                                Mark as Reviewed
                             </Button>
                             <Dialog.ActionTrigger asChild>
-                                <Button variant="outline" onClick={closeViewer}>Close</Button>
+                                <Button variant="outline" size="sm" onClick={closeViewer}>Close</Button>
                             </Dialog.ActionTrigger>
                         </Dialog.Footer>
                     </Dialog.Content>

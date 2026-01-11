@@ -1,4 +1,4 @@
-use rusqlite::{params, OptionalExtension, Row, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Row};
 use crate::core::error::AppResult;
 use crate::filesystem::meta::ProbedMetadata;
 use crate::media::{MediaEntry, MediaType};
@@ -21,8 +21,8 @@ fn map_row_to_media_entry(row: &Row<'_>) -> rusqlite::Result<MediaEntry> {
 }
 
 /// Retrieves a media entry by its ID.
-pub fn get_by_id(tx: &Transaction, media_id: i64) -> AppResult<Option<MediaEntry>> {
-    let existing = tx.query_row(r#"
+pub fn get_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<MediaEntry>> {
+    let existing = conn.query_row(r#"
         SELECT
             id,
             content_hash,
@@ -43,8 +43,8 @@ pub fn get_by_id(tx: &Transaction, media_id: i64) -> AppResult<Option<MediaEntry
 }
 
 /// Retrieves a media entry by its content hash.
-pub fn get_by_content_hash(tx: &Transaction, content_hash: &str) -> AppResult<Option<MediaEntry>> {
-    let existing = tx.query_row(r#"
+pub fn get_by_content_hash(conn: &Connection, content_hash: &str) -> AppResult<Option<MediaEntry>> {
+    let existing = conn.query_row(r#"
         SELECT
             id,
             content_hash,
@@ -65,8 +65,8 @@ pub fn get_by_content_hash(tx: &Transaction, content_hash: &str) -> AppResult<Op
 }
 
 /// Marks a media entry as reviewed by setting reviewed_at timestamp.
-pub fn mark_reviewed(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
-    tx.execute(
+pub fn mark_reviewed(conn: &Connection, media_id: i64, now: i64) -> AppResult<()> {
+    conn.execute(
         r#"
         UPDATE media
         SET reviewed_at = ?1,
@@ -81,10 +81,10 @@ pub fn mark_reviewed(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()>
 /// Inserts a new media entry after computing a file's hash.
 ///
 /// Sets hash_status to 'done' and other statuses to 'pending'.
-pub fn insert_for_hash(tx: &Transaction, content_hash: &str, media_type: MediaType, now: i64) -> AppResult<MediaEntry> {
+pub fn insert_for_hash(conn: &Connection, content_hash: &str, media_type: MediaType, now: i64) -> AppResult<MediaEntry> {
     let media_type_str = media_type.to_string();
 
-    tx.execute(r#"
+    conn.execute(r#"
         INSERT INTO media (
             content_hash,
             media_type,
@@ -111,8 +111,8 @@ pub fn insert_for_hash(tx: &Transaction, content_hash: &str, media_type: MediaTy
         )
     "#, params![content_hash, media_type_str, now])?;
 
-    let new_media_id = tx.last_insert_rowid();
-    let media_entry = match get_by_id(tx, new_media_id) {
+    let new_media_id = conn.last_insert_rowid();
+    let media_entry = match get_by_id(conn, new_media_id) {
         Ok(Some(media)) => media,
         Ok(None) => panic!("failed to find newly inserted media row"),
         Err(e) => return Err(e),
@@ -122,8 +122,8 @@ pub fn insert_for_hash(tx: &Transaction, content_hash: &str, media_type: MediaTy
 }
 
 /// Updates a media entry with extracted metadata (dimensions, duration).
-pub fn update_metadata(tx: &Transaction, media_id: i64, metadata: &ProbedMetadata, now: i64) -> AppResult<()> {
-    tx.execute(r#"
+pub fn update_metadata(conn: &Connection, media_id: i64, metadata: &ProbedMetadata, now: i64) -> AppResult<()> {
+    conn.execute(r#"
         UPDATE media
         SET
             width = ?1,
@@ -138,8 +138,8 @@ pub fn update_metadata(tx: &Transaction, media_id: i64, metadata: &ProbedMetadat
 }
 
 /// Marks metadata extraction as failed for a media entry.
-pub fn mark_metadata_error(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
-    tx.execute(r#"
+pub fn mark_metadata_error(conn: &Connection, media_id: i64, now: i64) -> AppResult<()> {
+    conn.execute(r#"
         UPDATE media
         SET metadata_status = 'error',
             updated_at = ?1
@@ -149,8 +149,8 @@ pub fn mark_metadata_error(tx: &Transaction, media_id: i64, now: i64) -> AppResu
 }
 
 /// Marks thumbnail generation as complete for a media entry.
-pub fn mark_thumbnail_done(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
-    tx.execute(r#"
+pub fn mark_thumbnail_done(conn: &Connection, media_id: i64, now: i64) -> AppResult<()> {
+    conn.execute(r#"
         UPDATE media
         SET thumbnail_status = 'done',
             updated_at = ?1
@@ -160,8 +160,8 @@ pub fn mark_thumbnail_done(tx: &Transaction, media_id: i64, now: i64) -> AppResu
 }
 
 /// Marks thumbnail generation as failed for a media entry.
-pub fn mark_thumbnail_error(tx: &Transaction, media_id: i64, now: i64) -> AppResult<()> {
-    tx.execute(r#"
+pub fn mark_thumbnail_error(conn: &Connection, media_id: i64, now: i64) -> AppResult<()> {
+    conn.execute(r#"
         UPDATE media
         SET thumbnail_status = 'error',
             updated_at = ?1
@@ -173,8 +173,8 @@ pub fn mark_thumbnail_error(tx: &Transaction, media_id: i64, now: i64) -> AppRes
 /// Retrieves all orphaned media entries (media with no file references).
 ///
 /// Returns a list of (media_id, content_hash) tuples.
-pub fn get_orphaned_media(tx: &Transaction) -> AppResult<Vec<(i64, String)>> {
-    let mut stmt = tx.prepare(r#"
+pub fn get_orphaned_media(conn: &Connection) -> AppResult<Vec<(i64, String)>> {
+    let mut stmt = conn.prepare(r#"
         SELECT m.id, m.content_hash
         FROM media m
         WHERE NOT EXISTS (
@@ -193,10 +193,10 @@ pub fn get_orphaned_media(tx: &Transaction) -> AppResult<Vec<(i64, String)>> {
 /// Deletes a media row if no files reference it.
 ///
 /// Returns the content_hash if deleted, None otherwise.
-pub fn delete_unreferenced_by_id(tx: &Transaction, media_id: i64) -> AppResult<Option<String>> {
+pub fn delete_unreferenced_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<String>> {
     // Atomically delete the media row only if it's still unreferenced.
     // `RETURNING content_hash` gives us the hash if a row was deleted.
-    let deleted_hash: Option<String> = tx.query_row(r#"
+    let deleted_hash: Option<String> = conn.query_row(r#"
         DELETE FROM media
         WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM files WHERE media_id = ?1)
         RETURNING content_hash
@@ -222,15 +222,14 @@ pub struct MediaItemRow {
     pub metadata_status: JobStatus,
     pub thumbnail_status: JobStatus,
     pub content_hash: String,
-    pub thumbnail_blob: Option<Vec<u8>>,
 }
 
-/// Retrieves all media items with their associated file and thumbnail data.
+/// Retrieves all media items with their associated file metadata.
 ///
-/// Joins files, media, and thumbnails tables, ordered by file creation date (newest first).
+/// Joins files and media tables, ordered by file creation date (newest first).
 /// Only returns files that have been hashed and have an associated media entry.
-pub fn get_all_with_thumbnails(tx: &Transaction) -> AppResult<Vec<MediaItemRow>> {
-    let mut stmt = tx.prepare(r#"
+pub fn get_all_with_thumbnails(conn: &Connection) -> AppResult<Vec<MediaItemRow>> {
+    let mut stmt = conn.prepare(r#"
         SELECT
             f.id as file_id,
             f.media_id,
@@ -245,11 +244,9 @@ pub fn get_all_with_thumbnails(tx: &Transaction) -> AppResult<Vec<MediaItemRow>>
             m.hash_status,
             m.metadata_status,
             m.thumbnail_status,
-            m.content_hash,
-            t.thumbnail_blob
+            m.content_hash
         FROM files f
         INNER JOIN media m ON f.media_id = m.id
-        LEFT JOIN thumbnails t ON m.content_hash = t.content_hash
         ORDER BY f.created_at DESC
     "#)?;
 
@@ -269,7 +266,6 @@ pub fn get_all_with_thumbnails(tx: &Transaction) -> AppResult<Vec<MediaItemRow>>
             metadata_status: row.get("metadata_status")?,
             thumbnail_status: row.get("thumbnail_status")?,
             content_hash: row.get("content_hash")?,
-            thumbnail_blob: row.get("thumbnail_blob").ok(),
         })
     })?;
 
@@ -300,12 +296,11 @@ pub struct MediaFeedRow {
     pub dir_path: Option<String>,
     pub file_name: Option<String>,
     pub ext: Option<String>,
-    pub thumbnail_blob: Option<Vec<u8>>,
     pub tags: Vec<crate::commands::media::TagDto>,
 }
 
-pub fn get_media_feed(tx: &Transaction) -> AppResult<Vec<MediaFeedRow>> {
-    let mut stmt = tx.prepare(r#"
+pub fn get_media_feed(conn: &Connection) -> AppResult<Vec<MediaFeedRow>> {
+    let mut stmt = conn.prepare(r#"
         SELECT
             m.id AS media_id,
             m.media_type,
@@ -321,7 +316,6 @@ pub fn get_media_feed(tx: &Transaction) -> AppResult<Vec<MediaFeedRow>> {
             rf.dir_path AS dir_path,
             rf.file_name AS file_name,
             rf.ext AS ext,
-            t.thumbnail_blob AS thumbnail_blob,
             (
                 SELECT GROUP_CONCAT(tags.id || ':' || tags.name, '|')
                 FROM media_tags
@@ -329,14 +323,7 @@ pub fn get_media_feed(tx: &Transaction) -> AppResult<Vec<MediaFeedRow>> {
                 WHERE media_tags.media_id = m.id
             ) AS tags_string
         FROM media m
-        LEFT JOIN thumbnails t ON t.content_hash = m.content_hash
-        LEFT JOIN files rf ON rf.id = (
-            SELECT f2.id
-            FROM files f2
-            WHERE f2.media_id = m.id
-            ORDER BY f2.created_at DESC
-            LIMIT 1
-        )
+        LEFT JOIN files rf ON rf.id = ( SELECT id FROM files WHERE media_id = m.id LIMIT 1 )
         ORDER BY m.created_at DESC
     "#)?;
 
@@ -368,7 +355,6 @@ pub fn get_media_feed(tx: &Transaction) -> AppResult<Vec<MediaFeedRow>> {
             dir_path: row.get::<_, Option<String>>("dir_path")?,
             file_name: row.get::<_, Option<String>>("file_name")?,
             ext: row.get::<_, Option<String>>("ext")?,
-            thumbnail_blob: row.get::<_, Option<Vec<u8>>> ("thumbnail_blob")?,
             tags,
         })
     })?;

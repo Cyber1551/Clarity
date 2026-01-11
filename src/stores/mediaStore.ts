@@ -9,6 +9,7 @@ type MediaStoreState = {
     isLoading: boolean;
     error: string | null;
     viewer: ViewerState;
+    setIsLoading: (isLoading: boolean) => void;
     loadAllMedia: () => Promise<void>;
     openViewer: (mediaId: number) => void;
     closeViewer: () => void;
@@ -16,9 +17,13 @@ type MediaStoreState = {
 
 export const useMediaStore = create<MediaStoreState>((set, get) => ({
     items: [],
-    isLoading: false,
+    isLoading: true,
     error: null,
     viewer: null,
+
+    setIsLoading(isLoading) {
+        set({ isLoading });
+    },
 
     async loadAllMedia() {
         const currentState = get();

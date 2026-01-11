@@ -39,7 +39,6 @@ fn config_path(app: &AppHandle) -> AppResult<PathBuf> {
 
 pub fn load_config(app: &AppHandle) -> AppResult<AppConfig> {
     let path = config_path(app)?;
-    println!("Loading configuration from {}", path.display());
     if !path.exists() {
         return Ok(AppConfig::default());
     }

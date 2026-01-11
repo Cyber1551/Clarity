@@ -2,7 +2,6 @@ use std::fs;
 use std::io::Read;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
-use rusqlite::Transaction;
 use crate::core::constants::{HASH_BUFFER_SIZE, UNSORTED_DIRECTORY};
 use crate::core::error::{AppResult, ResultExt};
 use crate::core::time::now_ms;
@@ -12,9 +11,19 @@ use crate::jobs::{helpers, JobEntry, JobType};
 use crate::media::MediaType;
 use tracing::debug;
 
-pub fn handle_hash_job(tx: &Transaction, library_root: &Path, job: &JobEntry) -> AppResult<()> {
+use std::sync::Arc;
+use crate::db::pool::DbManager;
+
+pub fn handle_hash_job(db_manager: Arc<DbManager>, library_root: &Path, job: &JobEntry) -> AppResult<()> {
     let file_id = job.require_file_id()?;
-    let Some(file) = db::files::get_by_id(tx, file_id)? else {
+    let file = {
+        let mut conn = db_manager.get_connection(library_root)?;
+        let tx = conn.transaction()?;
+        let f = db::files::get_by_id(&tx, file_id)?;
+        tx.commit()?;
+        f
+    };
+    let Some(file) = file else {
         // File gone; just return so job is marked done.
         return Ok(());
     };
@@ -34,23 +43,32 @@ pub fn handle_hash_job(tx: &Transaction, library_root: &Path, job: &JobEntry) ->
         return Ok(());
     }
 
+    // HEAVY WORK: Compute hash outside transaction and WITHOUT holding a connection
     let content_hash = compute_blake3_hash(&full_path)
         .with_context(format!("Failed to compute hash for {}", file.rel_path))?;
     let media_type = MediaType::from_extension(&file.ext);
 
+    // Safe to dedupe outside transaction as it's idempotent and uses content hash
+    filesystem::objects::dedupe_to_objects(&full_path, library_root, &content_hash, &file.ext)
+        .with_context(format!("Failed to deduplicate file to .objects: {}", file.rel_path))?;
+
     let now = now_ms();
-    let existing_media = db::media::get_by_content_hash(tx, &content_hash)?;
+    
+    // START TRANSACTION for final updates - acquire a fresh connection
+    let mut conn = db_manager.get_connection(library_root)?;
+    let tx = conn.transaction()?;
+
+    let existing_media = db::media::get_by_content_hash(&tx, &content_hash)?;
     let media = if let Some(m) = existing_media.as_ref() {
         m.clone()
     } else {
-        db::media::insert_for_hash(tx, &content_hash, media_type, now)
+        db::media::insert_for_hash(&tx, &content_hash, media_type, now)
             .with_context("Failed to create media entry")?
     };
 
     // If this file is under Unsorted, enforce a single Unsorted link across the entire Unsorted tree for this media.
-    // If another Unsorted link already exists for the same media (in any subfolder), delete this duplicate and exit.
     if file.dir_path.starts_with(UNSORTED_DIRECTORY) {
-        let unsorted_dupes = db::files::list_by_media_in_dir_like(tx, media.id, UNSORTED_DIRECTORY)?;
+        let unsorted_dupes = db::files::list_by_media_in_dir_like(&tx, media.id, UNSORTED_DIRECTORY)?;
         if let Some(other) = unsorted_dupes.into_iter().find(|f| f.id != file.id) {
             debug!(
                 current_id = file.id,
@@ -59,47 +77,40 @@ pub fn handle_hash_job(tx: &Transaction, library_root: &Path, job: &JobEntry) ->
                 "Duplicate Unsorted link for the same media detected; removing current file before assigning media_id"
             );
             let _ = fs::remove_file(&full_path);
-            let _ = db::files::delete_by_id(tx, file.id)?;
-            helpers::cleanup_orphaned_media(tx, library_root, job.media_id)?;
+            let _ = db::files::delete_by_id(&tx, file.id)?;
+            helpers::cleanup_orphaned_media(&tx, library_root, job.media_id)?;
+            tx.commit()?;
             return Ok(());
         }
     }
 
     // Enforce invariant: at most one link per (media_id, dir_path)
-    // If another file in the same directory already points to this media, delete this duplicate
-    // physical link and remove its DB row, then finish the job successfully without updating.
-    let existing_in_dir = db::files::list_by_media_and_dir(tx, media.id, &file.dir_path)?;
+    let existing_in_dir = db::files::list_by_media_and_dir(&tx, media.id, &file.dir_path)?;
     if let Some(other) = existing_in_dir.into_iter().find(|f| f.id != file.id) {
-        // Another link in the same folder already represents this media; remove the current file.
         debug!(
             current_id = file.id,
             other_id = other.id,
             dir = %file.dir_path,
             "Duplicate file in the same directory for the same media detected; removing current file before assigning media_id"
         );
-        // Best effort removal from disk, then delete DB row
         let _ = fs::remove_file(&full_path);
-        let _ = db::files::delete_by_id(tx, file.id)?;
-        // Also run orphan cleanup against the job's prior media_id if any
-        helpers::cleanup_orphaned_media(tx, library_root, job.media_id)?;
+        let _ = db::files::delete_by_id(&tx, file.id)?;
+        helpers::cleanup_orphaned_media(&tx, library_root, job.media_id)?;
+        tx.commit()?;
         return Ok(());
     }
 
-    // Safe to assign media_id now (no conflicting row exists for (media_id, dir_path))
-    db::files::update_media_id(tx, file.id, media.id, now)?;
+    // Update media_id and enqueue dependent jobs
+    db::files::update_media_id(&tx, file.id, media.id, now)?;
 
-    // Canonicalize in .objects/ with hardlink
-    filesystem::objects::dedupe_to_objects(&full_path, library_root, &content_hash, &file.ext)
-        .with_context(format!("Failed to deduplicate file to .objects: {}", file.rel_path))?;
-
-    // Enqueue only if needed
     if existing_media.is_none() || media.metadata_status.is_pending_or_error() || media.thumbnail_status.is_pending_or_error() {
-        let req = EnqueueJobRequest { file_id, media_id: Some(media.id), rel_path: file.rel_path.clone(), mtime: file.mtime };
-        db::jobs::enqueue(tx, JobType::Metadata, &req)?;
-        db::jobs::enqueue(tx, JobType::Thumbnail, &req)?;
+        let req = EnqueueJobRequest { file_id: file.id, media_id: Some(media.id), rel_path: file.rel_path.clone(), mtime: file.mtime };
+        db::jobs::enqueue(&tx, JobType::Metadata, &req)?;
+        db::jobs::enqueue(&tx, JobType::Thumbnail, &req)?;
     }
 
-    helpers::cleanup_orphaned_media(tx, library_root, job.media_id)?;
+    helpers::cleanup_orphaned_media(&tx, library_root, job.media_id)?;
+    tx.commit()?;
 
     Ok(())
 }

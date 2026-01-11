@@ -55,7 +55,7 @@ impl DbConn {
     }
 }
 
-fn initialize_schema(conn: &Connection) -> AppResult<()> {
+pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
     // `Media` table represents the content itself. Multiple files can point to the same media
     conn.execute_batch(r#"
         CREATE TABLE IF NOT EXISTS media (
@@ -74,6 +74,7 @@ fn initialize_schema(conn: &Connection) -> AppResult<()> {
         );
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_media_content_hash ON media(content_hash);
+        CREATE INDEX IF NOT EXISTS idx_media_created_at ON media(created_at);
         CREATE INDEX IF NOT EXISTS idx_media_hash_status ON media(hash_status) WHERE hash_status IN ('pending', 'error');
         CREATE INDEX IF NOT EXISTS idx_media_metadata_status ON media(metadata_status) WHERE metadata_status IN ('pending', 'error');
         CREATE INDEX IF NOT EXISTS idx_media_thumbnail_status ON media(thumbnail_status) WHERE thumbnail_status IN ('pending', 'error');

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::path::Path;
-use rusqlite::{params, OptionalExtension, Row, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Row};
 use tracing::debug;
 use crate::filesystem;
 use crate::core::error::AppResult;
@@ -43,8 +43,8 @@ fn map_row_to_file_entry(row: &Row<'_>) -> rusqlite::Result<FileEntry> {
     })
 }
 
-pub fn get_all(tx: &Transaction) -> AppResult<Vec<FileEntry>> {
-    let mut stmt = tx.prepare(r#"
+pub fn get_all(conn: &Connection) -> AppResult<Vec<FileEntry>> {
+    let mut stmt = conn.prepare(r#"
         SELECT
             id,
             media_id,
@@ -71,8 +71,8 @@ pub fn get_all(tx: &Transaction) -> AppResult<Vec<FileEntry>> {
     Ok(files)
 }
 
-pub fn get_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Option<FileEntry>> {
-    let mut stmt = tx.prepare(r#"
+pub fn get_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<FileEntry>> {
+    let mut stmt = conn.prepare(r#"
         SELECT
             id,
             media_id,
@@ -94,8 +94,8 @@ pub fn get_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Option<Fil
     Ok(existing)
 }
 
-pub fn get_by_id(tx: &Transaction, file_id: i64) -> AppResult<Option<FileEntry>> {
-    let mut stmt = tx.prepare(r#"
+pub fn get_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<FileEntry>> {
+    let mut stmt = conn.prepare(r#"
         SELECT
             id,
             media_id,
@@ -118,8 +118,8 @@ pub fn get_by_id(tx: &Transaction, file_id: i64) -> AppResult<Option<FileEntry>>
 }
 
 /// Lists all files rows for a given media_id.
-pub fn list_by_media_id(tx: &Transaction, media_id: i64) -> AppResult<Vec<FileEntry>> {
-    let mut stmt = tx.prepare(r#"
+pub fn list_by_media_id(conn: &Connection, media_id: i64) -> AppResult<Vec<FileEntry>> {
+    let mut stmt = conn.prepare(r#"
         SELECT
             id,
             media_id,
@@ -144,8 +144,8 @@ pub fn list_by_media_id(tx: &Transaction, media_id: i64) -> AppResult<Vec<FileEn
 }
 
 /// Lists all file rows for a given media_id scoped to a directory path string.
-pub fn list_by_media_and_dir(tx: &Transaction, media_id: i64, dir_path: &str) -> AppResult<Vec<FileEntry>> {
-    let mut stmt = tx.prepare(r#"
+pub fn list_by_media_and_dir(conn: &Connection, media_id: i64, dir_path: &str) -> AppResult<Vec<FileEntry>> {
+    let mut stmt = conn.prepare(r#"
         SELECT
             id,
             media_id,
@@ -170,9 +170,9 @@ pub fn list_by_media_and_dir(tx: &Transaction, media_id: i64, dir_path: &str) ->
 }
 
 /// Lists all file rows for a given media_id where the directory path starts with a prefix (LIKE prefix%).
-pub fn list_by_media_in_dir_like(tx: &Transaction, media_id: i64, dir_prefix: &str) -> AppResult<Vec<FileEntry>> {
+pub fn list_by_media_in_dir_like(conn: &Connection, media_id: i64, dir_prefix: &str) -> AppResult<Vec<FileEntry>> {
     let like_pattern = format!("{}%", dir_prefix);
-    let mut stmt = tx.prepare(r#"
+    let mut stmt = conn.prepare(r#"
         SELECT
             id,
             media_id,
@@ -196,8 +196,8 @@ pub fn list_by_media_in_dir_like(tx: &Transaction, media_id: i64, dir_prefix: &s
     Ok(files)
 }
 
-pub fn update_last_seen(tx: &Transaction, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
-    tx.execute(r#"
+pub fn update_last_seen(conn: &Connection, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
+    conn.execute(r#"
         UPDATE files
         SET last_seen_mtime = ?1,
             updated_at = ?2
@@ -206,8 +206,8 @@ pub fn update_last_seen(tx: &Transaction, rel_path: &str, mtime: &i64, now: &i64
     Ok(())
 }
 
-pub fn update_media_id(tx: &Transaction, file_id: i64, media_id: i64, now: i64) -> AppResult<()> {
-    tx.execute(r#"
+pub fn update_media_id(conn: &Connection, file_id: i64, media_id: i64, now: i64) -> AppResult<()> {
+    conn.execute(r#"
         UPDATE files
         SET media_id = ?1,
             updated_at = ?2
@@ -220,12 +220,12 @@ pub fn update_media_id(tx: &Transaction, file_id: i64, media_id: i64, now: i64) 
 ///
 /// Updates existing files if mtime or size changed, creates new records otherwise.
 /// Returns flags indicating if the file is new or modified to help decide if jobs should be enqueued.
-pub fn upsert(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppResult<UpsertFileResult> {
+pub fn upsert(conn: &Connection, rel_path: &str, full_path: &Path) -> AppResult<UpsertFileResult> {
     let now = now_ms();
     let size_bytes = meta::get_file_size(full_path)?;
     let mtime = meta::get_mtime(full_path)?;
     debug!("Upserting file: {} (size={}, mtime={})", rel_path, size_bytes, mtime);
-    let existing = get_by_rel_path(tx, rel_path)?;
+    let existing = get_by_rel_path(conn, rel_path)?;
 
     match existing {
         Some(mut entry) => {
@@ -234,12 +234,12 @@ pub fn upsert(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppResult<U
 
             if mtime_changed {
                 debug!("File changed: {} (old_mtime={}, new_mtime={}, old_size={}, new_size={})", rel_path, entry.mtime, mtime, entry.size_bytes, size_bytes);
-                update(tx, rel_path, &size_bytes, &mtime, &now)?;
+                update(conn, rel_path, &size_bytes, &mtime, &now)?;
                 entry.size_bytes = size_bytes;
                 entry.mtime = mtime;
             } else {
                 // untouched but seen in this scan
-                update_last_seen(tx, rel_path, &mtime, &now)?;
+                update_last_seen(conn, rel_path, &mtime, &now)?;
             }
 
             entry.last_seen_mtime = mtime;
@@ -266,7 +266,7 @@ pub fn upsert(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppResult<U
                 now,
             };
 
-            let new_file_id = insert(tx, &new_file)?;
+            let new_file_id = insert(conn, &new_file)?;
             debug!("Inserted new file with id={}", new_file_id);
             let entry = FileEntry {
                 id: new_file_id,
@@ -292,23 +292,23 @@ pub fn upsert(tx: &Transaction, rel_path: &str, full_path: &Path) -> AppResult<U
     }
 }
 
-pub fn delete_by_id(tx: &Transaction, file_id: i64) -> AppResult<Option<FileEntry>> {
-    let file_entry = get_by_id(tx, file_id)?;
-    tx.execute(r#"DELETE FROM files WHERE id = ?1"#, params![file_id])?; // AppError::Database
+pub fn delete_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<FileEntry>> {
+    let file_entry = get_by_id(conn, file_id)?;
+    conn.execute(r#"DELETE FROM files WHERE id = ?1"#, params![file_id])?; // AppError::Database
     Ok(file_entry)
 }
 
-pub fn delete_by_rel_path(tx: &Transaction, rel_path: &str) -> AppResult<Option<FileEntry>> {
-    let file_entry = get_by_rel_path(tx, rel_path)?;
-    tx.execute(r#"DELETE FROM files WHERE rel_path = ?1"#, params![rel_path])?; // AppError::Database
+pub fn delete_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<FileEntry>> {
+    let file_entry = get_by_rel_path(conn, rel_path)?;
+    conn.execute(r#"DELETE FROM files WHERE rel_path = ?1"#, params![rel_path])?; // AppError::Database
     Ok(file_entry)
 }
 
 /// Sets the reviewed flag for all files that belong to a given media_id.
-pub fn set_reviewed_for_media(tx: &Transaction, media_id: i64, reviewed: bool) -> AppResult<usize> {
+pub fn set_reviewed_for_media(conn: &Connection, media_id: i64, reviewed: bool) -> AppResult<usize> {
     let now = now_ms();
     let flag: i64 = if reviewed { 1 } else { 0 };
-    let changed = tx.execute(
+    let changed = conn.execute(
         r#"
         UPDATE files
         SET is_reviewed = ?1,
@@ -324,9 +324,9 @@ pub fn set_reviewed_for_media(tx: &Transaction, media_id: i64, reviewed: bool) -
 ///
 /// Uses an efficient NOT IN query to delete all missing files in one operation.
 /// Returns the number of files deleted.
-pub fn remove_deleted_files(tx: &Transaction, seen_rel_paths: &HashSet<String>) -> AppResult<usize> {
+pub fn remove_deleted_files(conn: &Connection, seen_rel_paths: &HashSet<String>) -> AppResult<usize> {
     let deleted_count = if seen_rel_paths.is_empty() {
-        tx.execute("DELETE FROM files", [])? // AppError::Database
+        conn.execute("DELETE FROM files", [])? // AppError::Database
     } else if seen_rel_paths.len() < 1000 {
         let placeholders = (0..seen_rel_paths.len())
             .map(|i| format!("?{}", i + 1))
@@ -337,9 +337,9 @@ pub fn remove_deleted_files(tx: &Transaction, seen_rel_paths: &HashSet<String>) 
         let rel_paths: Vec<&str> = seen_rel_paths.iter().map(|s| s.as_str()).collect();
         let params = rusqlite::params_from_iter(rel_paths);
 
-        tx.execute(&query, params)? // AppError::Database
+        conn.execute(&query, params)? // AppError::Database
     } else {
-        let mut stmt = tx.prepare("SELECT id, rel_path FROM files")?; // AppError::Database
+        let mut stmt = conn.prepare("SELECT id, rel_path FROM files")?; // AppError::Database
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
         })?; // AppError::Database
@@ -356,7 +356,7 @@ pub fn remove_deleted_files(tx: &Transaction, seen_rel_paths: &HashSet<String>) 
             let placeholders = to_delete.iter().map(|_| "?").collect::<Vec<_>>().join(",");
             let query = format!("DELETE FROM files WHERE id IN ({placeholders})");
             let params = rusqlite::params_from_iter(to_delete);
-            tx.execute(&query, params)? // AppError::Database
+            conn.execute(&query, params)? // AppError::Database
         } else {
             0
         }
@@ -370,7 +370,7 @@ pub fn remove_deleted_files(tx: &Transaction, seen_rel_paths: &HashSet<String>) 
 /// This is a scoped variant used by directory-specific reconciliation (e.g., Unsorted)
 /// to avoid deleting files from other projections (like Sorted tags).
 pub fn remove_deleted_files_in_dir_like(
-    tx: &Transaction,
+    conn: &Connection,
     dir_prefix: &str,
     seen_rel_paths: &HashSet<String>,
 ) -> AppResult<usize> {
@@ -378,7 +378,7 @@ pub fn remove_deleted_files_in_dir_like(
 
     // Strategy: list all candidate rows under the dir LIKE prefix, compute the set to delete,
     // then perform a single DELETE ... WHERE id IN (...)
-    let mut stmt = tx.prepare("SELECT id, rel_path FROM files WHERE dir_path LIKE ?1")?;
+    let mut stmt = conn.prepare("SELECT id, rel_path FROM files WHERE dir_path LIKE ?1")?;
     let rows = stmt.query_map(params![like_pattern], |row| {
         Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
     })?;
@@ -397,14 +397,14 @@ pub fn remove_deleted_files_in_dir_like(
         let placeholders = to_delete.iter().map(|_| "?").collect::<Vec<_>>().join(",");
         let query = format!("DELETE FROM files WHERE id IN ({})", placeholders);
         let params = rusqlite::params_from_iter(to_delete);
-        tx.execute(&query, params)?
+        conn.execute(&query, params)?
     };
 
     Ok(deleted_count)
 }
 
-fn insert(tx: &Transaction, new_file: &NewFileRecord) -> AppResult<i64> {
-    tx.execute(r#"
+fn insert(conn: &Connection, new_file: &NewFileRecord) -> AppResult<i64> {
+    conn.execute(r#"
         INSERT INTO files (
             media_id,
             rel_path,
@@ -435,12 +435,12 @@ fn insert(tx: &Transaction, new_file: &NewFileRecord) -> AppResult<i64> {
         ],
     )?; // AppError::Database
 
-    let id = tx.last_insert_rowid();
+    let id = conn.last_insert_rowid();
     Ok(id)
 }
 
-fn update(tx: &Transaction, rel_path: &str, size_bytes: &i64, mtime: &i64, now: &i64) -> AppResult<()> {
-    tx.execute(r#"
+fn update(conn: &Connection, rel_path: &str, size_bytes: &i64, mtime: &i64, now: &i64) -> AppResult<()> {
+    conn.execute(r#"
         UPDATE files
         SET
             size_bytes = ?1,
