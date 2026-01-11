@@ -85,7 +85,7 @@ const MediaGrid = ({ items, isLoading, error }: MediaGridProps) => {
                 List: GridList,
                 Item: GridItem
             }}
-            itemContent={(index, item) => (
+            itemContent={(_, item) => (
                 <MediaCard key={item.mediaId} item={item} />
             )}
         />

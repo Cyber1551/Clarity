@@ -16,6 +16,7 @@ const App = () => {
     const initConfig = useConfigStore(s => s.initConfig);
     const pickLibraryRoot = useConfigStore(s => s.pickLibraryRoot);
     const loadAllMedia = useMediaStore(s => s.loadAllMedia);
+    const setIsLoading = useMediaStore(s => s.setIsLoading);
 
     useEffect(() => {
         void initConfig();
@@ -36,9 +37,10 @@ const App = () => {
     useEffect(() => {
         if (config?.libraryRoot) {
             // Initialize library (scan files and enqueue jobs)
+            setIsLoading(true);
             void initialize_library();
         }
-    }, [config?.libraryRoot]);
+    }, [config?.libraryRoot, setIsLoading]);
 
     if (isLoading && !config) {
         return (
