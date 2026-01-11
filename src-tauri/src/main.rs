@@ -7,15 +7,25 @@ use app::core::config;
 use app::core::logging;
 use app::jobs::runner::JobWorkerManager;
 use app::filesystem::watcher::FileWatcherManager;
+use app::db::pool::DbManager;
+use app::core::state::LibraryRootState;
+use app::core::constants::BROKEN_THUMBNAIL;
+
+use std::sync::Arc;
 
 fn main() {
     // Initialize logging
     logging::init_logging();
 
+    let db_manager = Arc::new(DbManager::new());
+    let library_root_state = Arc::new(LibraryRootState(std::sync::Mutex::new(None)));
+
     tauri::Builder::default()
         .manage(JobWorkerManager::new())
         .manage(FileWatcherManager::new())
-        .setup(|app| {
+        .manage(db_manager.clone())
+        .manage(library_root_state.clone())
+        .setup(move |app| {
             let handle = app.handle();
             let job_manager = app.state::<JobWorkerManager>();
             let watcher_manager = app.state::<FileWatcherManager>();
@@ -27,7 +37,8 @@ fn main() {
             // Try to read existing library_root from config
             match config::get_library_root(handle) {
                 Ok(root) => {
-                    job_manager.try_start_worker(&root);
+                    *app.state::<Arc<LibraryRootState>>().0.lock().unwrap() = Some(root.clone());
+                    job_manager.try_start_worker(&root, db_manager.clone());
                     watcher_manager.try_start_watcher(&root);
                 }
                 Err(e) => {
@@ -37,6 +48,50 @@ fn main() {
                 }
             }
             Ok(())
+        })
+        .register_uri_scheme_protocol("thumbnail", |ctx, request| {
+            let hash = request.uri().path().trim_start_matches('/').to_lowercase();
+            let app = ctx.app_handle();
+            
+            let res = (|| {
+                let root = {
+                    let state = app.state::<Arc<LibraryRootState>>();
+                    let root_lock = state.0.lock().unwrap();
+                    root_lock.as_ref().ok_or("Library root not set")?.clone()
+                };
+                let db_manager = app.state::<Arc<DbManager>>();
+                let conn = db_manager.get_connection(&root)?;
+                let blob = app::db::thumbnails::get_blob(&conn, &hash)?;
+                if blob.is_none() {
+                    tracing::warn!("Thumbnail NOT FOUND in DB for hash: {}", hash);
+                }
+                Ok::<_, Box<dyn std::error::Error>>(blob)
+            })();
+
+            match res {
+                Ok(Some(blob)) => {
+                    tauri::http::Response::builder()
+                        .header("Content-Type", "image/webp")
+                        .header("Cache-Control", "public, max-age=31536000, immutable")
+                        .body(blob)
+                        .unwrap()
+                }
+                Ok(None) => {
+                    tauri::http::Response::builder()
+                        .header("Content-Type", "image/webp")
+                        .header("Cache-Control", "no-store, must-revalidate")
+                        .body(BROKEN_THUMBNAIL.to_vec())
+                        .unwrap()
+                }
+                Err(e) => {
+                    tracing::error!("Thumbnail protocol error for hash {}: {}", hash, e);
+                    tauri::http::Response::builder()
+                        .header("Content-Type", "image/webp")
+                        .header("Cache-Control", "no-store, must-revalidate")
+                        .body(BROKEN_THUMBNAIL.to_vec())
+                        .unwrap()
+                }
+            }
         })
         .on_window_event(|window, event| if let tauri::WindowEvent::CloseRequested { .. } = event {
             // Shutdown threads cleanly on application close

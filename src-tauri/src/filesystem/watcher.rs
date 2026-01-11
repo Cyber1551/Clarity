@@ -5,11 +5,12 @@ use std::thread;
 use std::time::{Duration, Instant};
 use std::sync::mpsc::RecvTimeoutError;
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tracing::{debug, error, info, warn};
 use crate::core::constants::{UNSORTED_DIRECTORY, WATCHER_DEBOUNCE_DURATION};
 use crate::core::error::AppResult;
 use crate::files::scan::reconcile_unsorted;
+use crate::db::pool::DbManager;
 
 /// Manages filesystem watching for the Unsorted Media directory.
 ///
@@ -129,23 +130,30 @@ fn run_watcher(library_root: &Path, dirty: Arc<AtomicBool>, shutdown: Arc<Atomic
                     if last_time.elapsed() >= WATCHER_DEBOUNCE_DURATION && dirty.load(Ordering::Relaxed) {
                         info!("Debounce elapsed, triggering reconciliation");
 
-                        match reconcile_unsorted(library_root) {
-                            Ok(stats) => {
-                                info!("Reconciliation complete: new={}, modified={}, deleted={}, unchanged={}",
-                                      stats.new_files, stats.modified_files, stats.deleted_files, stats.unchanged_files);
+                        if let Ok(handle_guard) = app_handle.lock() {
+                            if let Some(ref app) = *handle_guard {
+                                let res = (|| {
+                                    let db_manager = app.state::<Arc<DbManager>>();
+                                    let mut conn = db_manager.get_connection(library_root)?;
+                                    let stats = reconcile_unsorted(&mut conn, library_root)?;
+                                    Ok::<_, Box<dyn std::error::Error>>(stats)
+                                })();
 
-                                if stats.new_files > 0 || stats.modified_files > 0 || stats.deleted_files > 0 {
-                                    if let Ok(handle_guard) = app_handle.lock() {
-                                        if let Some(ref app) = *handle_guard {
+                                match res {
+                                    Ok(stats) => {
+                                        info!("Reconciliation complete: new={}, modified={}, deleted={}, unchanged={}",
+                                              stats.new_files, stats.modified_files, stats.deleted_files, stats.unchanged_files);
+
+                                        if stats.new_files > 0 || stats.modified_files > 0 || stats.deleted_files > 0 {
                                             if let Err(e) = app.emit("library-changed", ()) {
                                                 error!("Failed to emit library-changed event: {}", e);
                                             }
                                         }
                                     }
+                                    Err(e) => {
+                                        error!("Reconciliation failed: {}", e);
+                                    }
                                 }
-                            }
-                            Err(e) => {
-                                error!("Reconciliation failed: {}", e);
                             }
                         }
 

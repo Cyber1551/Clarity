@@ -1,8 +1,9 @@
 import { Box, Tabs } from "@chakra-ui/react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useMediaStore } from "@/stores/mediaStore";
 import MediaGrid from "./MediaGrid";
 import { listen } from "@tauri-apps/api/event";
+import { throttle } from "lodash-es";
 
 const MainContent = () => {
     const items = useMediaStore((s) => s.items);
@@ -10,10 +11,17 @@ const MainContent = () => {
     const error = useMediaStore((s) => s.error);
     const loadAllMedia = useMediaStore((s) => s.loadAllMedia);
 
+    // Throttle the loadAllMedia calls to once every 2 seconds to avoid UI freezing
+    // during heavy background processing.
+    const throttledLoad = useMemo(
+        () => throttle(loadAllMedia, 2000, { leading: true, trailing: true }),
+        [loadAllMedia]
+    );
+
     // Listen for job completion and library change events
     useEffect(() => {
         const unsubscribeJobCompleted = listen("job-completed", () => {
-            void loadAllMedia();
+            void throttledLoad();
         });
 
         const unsubscribeLibraryChanged = listen("library-changed", () => {
@@ -23,24 +31,25 @@ const MainContent = () => {
         return () => {
             unsubscribeJobCompleted.then(fn => fn());
             unsubscribeLibraryChanged.then(fn => fn());
+            throttledLoad.cancel();
         };
-    }, [loadAllMedia]);
+    }, [loadAllMedia, throttledLoad]);
 
     return (
-        <Box as={"main"} flex="1" minH={0} overflowY="auto">
-            <Tabs.Content value="dashboard">
+        <Box as={"main"} flex="1" minH={0} display="flex" flexDirection="column">
+            <Tabs.Content value="dashboard" flex="1" overflowY="auto">
                 Dashboard
             </Tabs.Content>
-            <Tabs.Content value="library">
+            <Tabs.Content value="library" flex="1" minH={0} display="flex" flexDirection="column">
                 <MediaGrid items={items} isLoading={isLoading} error={error} />
             </Tabs.Content>
-            <Tabs.Content value="explore">
+            <Tabs.Content value="explore" flex="1" overflowY="auto">
                 Explore
             </Tabs.Content>
-            <Tabs.Content value="moments">
+            <Tabs.Content value="moments" flex="1" overflowY="auto">
                 Moments
             </Tabs.Content>
-            <Tabs.Content value="session">
+            <Tabs.Content value="session" flex="1" overflowY="auto">
                 Sessions
             </Tabs.Content>
         </Box>

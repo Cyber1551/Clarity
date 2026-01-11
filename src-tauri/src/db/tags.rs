@@ -1,4 +1,4 @@
-use rusqlite::{params, OptionalExtension, Row, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Row};
 use crate::core::error::AppResult;
 use crate::core::time::now_ms;
 
@@ -15,8 +15,8 @@ fn map_row_to_tag(row: &Row<'_>) -> rusqlite::Result<TagRow> {
     })
 }
 
-pub fn list_all(tx: &Transaction) -> AppResult<Vec<TagRow>> {
-    let mut stmt = tx.prepare(r#"
+pub fn list_all(conn: &Connection) -> AppResult<Vec<TagRow>> {
+    let mut stmt = conn.prepare(r#"
         SELECT id, name
         FROM tags
         ORDER BY name COLLATE NOCASE ASC
@@ -30,8 +30,8 @@ pub fn list_all(tx: &Transaction) -> AppResult<Vec<TagRow>> {
     Ok(tags)
 }
 
-pub fn get_by_name(tx: &Transaction, name: &str) -> AppResult<Option<TagRow>> {
-    let existing = tx
+pub fn get_by_name(conn: &Connection, name: &str) -> AppResult<Option<TagRow>> {
+    let existing = conn
         .query_row(
             r#"
             SELECT id, name
@@ -45,26 +45,26 @@ pub fn get_by_name(tx: &Transaction, name: &str) -> AppResult<Option<TagRow>> {
     Ok(existing)
 }
 
-pub fn create(tx: &Transaction, name: &str) -> AppResult<TagRow> {
+pub fn create(conn: &Connection, name: &str) -> AppResult<TagRow> {
     let now = now_ms();
-    tx.execute(
+    conn.execute(
         r#"
         INSERT INTO tags (name, created_at, updated_at)
         VALUES (?1, ?2, ?2)
     "#,
         params![name, now],
     )?;
-    let id = tx.last_insert_rowid();
+    let id = conn.last_insert_rowid();
     Ok(TagRow { id, name: name.to_string() })
 }
 
-pub fn get_or_create(tx: &Transaction, name: &str) -> AppResult<TagRow> {
-    if let Some(t) = get_by_name(tx, name)? { return Ok(t); }
-    create(tx, name)
+pub fn get_or_create(conn: &Connection, name: &str) -> AppResult<TagRow> {
+    if let Some(t) = get_by_name(conn, name)? { return Ok(t); }
+    create(conn, name)
 }
 
-pub fn list_for_media(tx: &Transaction, media_id: i64) -> AppResult<Vec<TagRow>> {
-    let mut stmt = tx.prepare(r#"
+pub fn list_for_media(conn: &Connection, media_id: i64) -> AppResult<Vec<TagRow>> {
+    let mut stmt = conn.prepare(r#"
         SELECT t.id, t.name
         FROM media_tags mt
         JOIN tags t ON t.id = mt.tag_id
@@ -77,9 +77,9 @@ pub fn list_for_media(tx: &Transaction, media_id: i64) -> AppResult<Vec<TagRow>>
     Ok(tags)
 }
 
-pub fn add_tag_to_media(tx: &Transaction, media_id: i64, tag_id: i64) -> AppResult<bool> {
+pub fn add_tag_to_media(conn: &Connection, media_id: i64, tag_id: i64) -> AppResult<bool> {
     let now = now_ms();
-    let changed = tx.execute(
+    let changed = conn.execute(
         r#"
         INSERT OR IGNORE INTO media_tags (media_id, tag_id, created_at)
         VALUES (?1, ?2, ?3)
@@ -89,8 +89,8 @@ pub fn add_tag_to_media(tx: &Transaction, media_id: i64, tag_id: i64) -> AppResu
     Ok(changed > 0)
 }
 
-pub fn remove_tag_from_media(tx: &Transaction, media_id: i64, tag_id: i64) -> AppResult<bool> {
-    let changed = tx.execute(
+pub fn remove_tag_from_media(conn: &Connection, media_id: i64, tag_id: i64) -> AppResult<bool> {
+    let changed = conn.execute(
         r#"
         DELETE FROM media_tags
         WHERE media_id = ?1 AND tag_id = ?2

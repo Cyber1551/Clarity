@@ -6,7 +6,6 @@ use crate::core::constants::UNSORTED_DIRECTORY;
 use crate::core::error::AppResult;
 use crate::db;
 use crate::db::jobs::EnqueueJobRequest;
-use crate::db::schema::DbConn;
 use crate::filesystem;
 use crate::filesystem::path::{get_rel_path, path_to_str};
 use crate::jobs::JobType;
@@ -41,8 +40,7 @@ impl ReconcileStats {
 /// - **Unchanged files**: Updates last_seen_mtime only
 ///
 /// Returns statistics about the reconciliation operation.
-pub fn reconcile_unsorted(library_root: &Path) -> AppResult<ReconcileStats> {
-    let mut conn = DbConn::new(library_root)?;
+pub fn reconcile_unsorted(conn: &mut rusqlite::Connection, library_root: &Path) -> AppResult<ReconcileStats> {
     let unsorted_dir = library_root.join(UNSORTED_DIRECTORY);
 
     if !unsorted_dir.exists() {
@@ -53,7 +51,7 @@ pub fn reconcile_unsorted(library_root: &Path) -> AppResult<ReconcileStats> {
     info!("Starting reconciliation of Unsorted Media directory: {}", unsorted_dir.display());
     let mut stats = ReconcileStats::default();
     let mut seen_rel_paths = HashSet::<String>::new();
-    let tx = DbConn::transaction(&mut conn)?;
+    let tx = conn.transaction()?;
 
     // Phase 1: Walk filesystem and reconcile with database
     for entry in WalkDir::new(&unsorted_dir).into_iter().filter_map(Result::ok) {

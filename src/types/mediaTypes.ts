@@ -19,7 +19,6 @@ export interface MediaItem {
     metadataStatus: JobStatus;
     thumbnailStatus: JobStatus;
     contentHash: string;
-    thumbnailDataUrl: string;
 }
 
 // Media-level feed item (one row per media)
@@ -38,7 +37,6 @@ export interface MediaFeedItem {
     thumbnailStatus: JobStatus;
     contentHash: string;
     reviewedAt: number | null;
-    thumbnailDataUrl: string;
     tags: Tag[];
 }
 

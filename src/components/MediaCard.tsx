@@ -42,7 +42,7 @@ const MediaCard = ({ item }: MediaCardProps) => {
         >
             {/* Thumbnail image */}
             <Image
-                src={item.thumbnailDataUrl}
+                src={`thumbnail://localhost/${item.contentHash}`}
                 alt={item.fileName ?? item.contentHash}
                 w="full"
                 h="full"

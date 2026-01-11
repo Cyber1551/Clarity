@@ -1,21 +1,21 @@
 use serde::{Serialize, Deserialize};
-use crate::core::config;
-use crate::core::constants::{BROKEN_THUMBNAIL, SORTED_DIRECTORY, UNSORTED_DIRECTORY};
+use crate::core::constants::{SORTED_DIRECTORY, UNSORTED_DIRECTORY};
 use crate::core::error::AppError;
-use crate::db::schema::DbConn;
+use crate::db::pool::DbManager;
+use crate::core::state::LibraryRootState;
 use crate::db;
 use crate::jobs::JobStatus;
 use crate::media::MediaType;
 use std::path::{Path, PathBuf};
 use std::fs;
-use tauri::Emitter;
+use std::sync::Arc;
+use tauri::{Emitter, State};
 use crate::filesystem::objects;
 use crate::core::time::now_ms;
 
 /// Data transfer object for media items sent to the frontend.
 ///
-/// Combines file metadata, media information, and thumbnails with base64-encoded
-/// thumbnail data URLs ready for direct use in HTML `<img>` tags.
+/// Combines file metadata and media information.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaItemDto {
@@ -33,49 +33,29 @@ pub struct MediaItemDto {
     pub metadata_status: JobStatus,
     pub thumbnail_status: JobStatus,
     pub content_hash: String,
-    pub thumbnail_data_url: String,
 }
 
 /// Retrieves all media items from the library.
-///
-/// Thin command handler that delegates to the database layer and handles presentation logic.
 #[tauri::command]
-pub fn get_all_media(app: tauri::AppHandle) -> Result<Vec<MediaItemDto>, String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn get_all_media(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>) -> Result<Vec<MediaItemDto>, String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
+    
+    let conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
 
     // Delegate to database layer
-    let rows = db::media::get_all_with_thumbnails(&tx).map_err(|e: AppError| e.report())?;
+    let rows = db::media::get_all_with_thumbnails(&conn).map_err(|e: AppError| e.report())?;
 
-    // Convert database rows to DTOs with presentation logic (base64 encoding)
     let items: Vec<MediaItemDto> = rows
         .into_iter()
         .map(MediaItemDto::from_db_row)
         .collect();
 
-    tx.commit().map_err(|e| e.to_string())?;
-
     Ok(items)
 }
 
 impl MediaItemDto {
-    /// Converts a database row to a DTO with base64-encoded thumbnail data URL.
-    ///
-    /// Handles thumbnail encoding by converting the binary blob to a base64-encoded
-    /// data URL. Falls back to the broken thumbnail icon if no thumbnail is available.
     fn from_db_row(row: db::media::MediaItemRow) -> Self {
-        let thumbnail_data_url = match row.thumbnail_blob {
-            Some(blob) => {
-                let encoded = base64_encode(&blob);
-                format!("data:image/webp;base64,{encoded}")
-            }
-            None => {
-                let encoded = base64_encode(BROKEN_THUMBNAIL);
-                format!("data:image/webp;base64,{encoded}")
-            }
-        };
-
         Self {
             media_id: row.media_id,
             file_id: row.file_id,
@@ -91,15 +71,8 @@ impl MediaItemDto {
             metadata_status: row.metadata_status,
             thumbnail_status: row.thumbnail_status,
             content_hash: row.content_hash,
-            thumbnail_data_url,
         }
     }
-}
-
-/// Encodes binary data to base64 string.
-fn base64_encode(data: &[u8]) -> String {
-    use base64::Engine;
-    base64::engine::general_purpose::STANDARD.encode(data)
 }
 
 // ============ Viewer/Tags DTOs and Commands ============
@@ -123,23 +96,11 @@ pub struct MediaFeedItemDto {
     pub thumbnail_status: JobStatus,
     pub content_hash: String,
     pub reviewed_at: Option<i64>,
-    pub thumbnail_data_url: String,
     pub tags: Vec<TagDto>,
 }
 
 impl MediaFeedItemDto {
     fn from_db_row(row: db::media::MediaFeedRow) -> Self {
-        let thumbnail_data_url = match row.thumbnail_blob {
-            Some(blob) => {
-                let encoded = base64_encode(&blob);
-                format!("data:image/webp;base64,{encoded}")
-            }
-            None => {
-                let encoded = base64_encode(BROKEN_THUMBNAIL);
-                format!("data:image/webp;base64,{encoded}")
-            }
-        };
-
         Self {
             media_id: row.media_id,
             rel_path: row.rel_path,
@@ -155,22 +116,21 @@ impl MediaFeedItemDto {
             thumbnail_status: row.thumbnail_status,
             content_hash: row.content_hash,
             reviewed_at: row.reviewed_at,
-            thumbnail_data_url,
             tags: row.tags,
         }
     }
 }
 
 #[tauri::command]
-pub fn get_media_feed(app: tauri::AppHandle) -> Result<Vec<MediaFeedItemDto>, String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn get_media_feed(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>) -> Result<Vec<MediaFeedItemDto>, String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
 
-    let rows = db::media::get_media_feed(&tx).map_err(|e: AppError| e.report())?;
+    let conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
+
+    let rows = db::media::get_media_feed(&conn).map_err(|e: AppError| e.report())?;
     let items: Vec<MediaFeedItemDto> = rows.into_iter().map(MediaFeedItemDto::from_db_row).collect();
 
-    tx.commit().map_err(|e| e.to_string())?;
     Ok(items)
 }
 
@@ -202,10 +162,12 @@ pub struct MediaDetailDto {
 }
 
 #[tauri::command]
-pub fn get_media_detail(app: tauri::AppHandle, media_id: i64) -> Result<MediaDetailDto, String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn get_media_detail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, media_id: i64) -> Result<MediaDetailDto, String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
+
+    let mut conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
+    let tx = conn.transaction().map_err(|e: rusqlite::Error| AppError::Database(e).report())?;
 
     let media = db::media::get_by_id(&tx, media_id).map_err(|e: AppError| e.report())?
         .ok_or_else(|| AppError::NotFound("media not found".into()).report())?;
@@ -239,14 +201,14 @@ pub fn get_media_detail(app: tauri::AppHandle, media_id: i64) -> Result<MediaDet
 }
 
 #[tauri::command]
-pub fn list_tags(app: tauri::AppHandle) -> Result<Vec<TagDto>, String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn list_tags(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>) -> Result<Vec<TagDto>, String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
 
-    let tags = db::tags::list_all(&tx).map_err(|e: AppError| e.report())?;
+    let conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
+
+    let tags = db::tags::list_all(&conn).map_err(|e: AppError| e.report())?;
     let dtos = tags.into_iter().map(|t| TagDto { id: t.id, name: t.name }).collect();
-    tx.commit().map_err(|e| e.to_string())?;
     Ok(dtos)
 }
 
@@ -255,13 +217,13 @@ pub fn list_tags(app: tauri::AppHandle) -> Result<Vec<TagDto>, String> {
 pub struct CreateTagRequest { pub name: String }
 
 #[tauri::command]
-pub fn create_tag(app: tauri::AppHandle, req: CreateTagRequest) -> Result<TagDto, String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn create_tag(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, req: CreateTagRequest) -> Result<TagDto, String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
 
-    let tag = db::tags::get_or_create(&tx, &req.name).map_err(|e: AppError| e.report())?;
-    tx.commit().map_err(|e| e.to_string())?;
+    let conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
+
+    let tag = db::tags::get_or_create(&conn, &req.name).map_err(|e: AppError| e.report())?;
     Ok(TagDto { id: tag.id, name: tag.name })
 }
 
@@ -270,10 +232,13 @@ pub fn create_tag(app: tauri::AppHandle, req: CreateTagRequest) -> Result<TagDto
 pub struct TagMediaRequest { pub media_id: i64, pub tag_id: i64 }
 
 #[tauri::command]
-pub fn tag_media(app: tauri::AppHandle, req: TagMediaRequest) -> Result<(), String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn tag_media(app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, req: TagMediaRequest) -> Result<(), String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?.clone();
+    drop(root_lock);
+
+    let mut conn = db_manager.get_connection(&root).map_err(|e: AppError| e.report())?;
+    let tx = conn.transaction().map_err(|e: rusqlite::Error| AppError::Database(e).report())?;
 
     // DB relation
     let changed = db::tags::add_tag_to_media(&tx, req.media_id, req.tag_id).map_err(|e: AppError| e.report())?;
@@ -335,10 +300,13 @@ pub fn tag_media(app: tauri::AppHandle, req: TagMediaRequest) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub fn untag_media(app: tauri::AppHandle, req: TagMediaRequest) -> Result<(), String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn untag_media(app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, req: TagMediaRequest) -> Result<(), String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?.clone();
+    drop(root_lock);
+
+    let mut conn = db_manager.get_connection(&root).map_err(|e: AppError| e.report())?;
+    let tx = conn.transaction().map_err(|e: rusqlite::Error| AppError::Database(e).report())?;
 
     // Relation removal
     let changed = db::tags::remove_tag_from_media(&tx, req.media_id, req.tag_id).map_err(|e: AppError| e.report())?;
@@ -393,10 +361,13 @@ fn next_available_name(target: &Path) -> PathBuf {
 // ============ Review Command ============
 
 #[tauri::command]
-pub fn mark_media_reviewed(app: tauri::AppHandle, media_id: i64) -> Result<(), String> {
-    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
-    let mut conn = DbConn::new(&root).map_err(|e: AppError| e.report())?;
-    let tx = DbConn::transaction(&mut conn).map_err(|e: AppError| e.report())?;
+pub fn mark_media_reviewed(app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, media_id: i64) -> Result<(), String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?.clone();
+    drop(root_lock);
+
+    let mut conn = db_manager.get_connection(&root).map_err(|e: AppError| e.report())?;
+    let tx = conn.transaction().map_err(|e: rusqlite::Error| AppError::Database(e).report())?;
 
     // Fetch all files for this media
     let files = db::files::list_by_media_id(&tx, media_id).map_err(|e: AppError| e.report())?;
