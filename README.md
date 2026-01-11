@@ -12,10 +12,7 @@ It ensures that your organization is never dependent on the app itself by using 
 
 See Clarity in action:
 
-<video width="100%" controls>
-  <source src="assets/demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/454a16af-f824-45b4-9251-76104ffa9a01
 
 ---
 
