@@ -9,7 +9,6 @@ use app::jobs::runner::JobWorkerManager;
 use app::filesystem::watcher::FileWatcherManager;
 use app::db::pool::DbManager;
 use app::core::state::LibraryRootState;
-use app::core::constants::BROKEN_THUMBNAIL;
 
 use std::sync::Arc;
 
@@ -49,92 +48,6 @@ fn main() {
             }
             Ok(())
         })
-        .register_uri_scheme_protocol("thumbnail", |ctx, request| {
-            let hash = request.uri().path().trim_start_matches('/').to_lowercase();
-            let app = ctx.app_handle();
-            
-            let res = (|| {
-                let root = {
-                    let state = app.state::<Arc<LibraryRootState>>();
-                    let root_lock = state.0.lock().unwrap();
-                    root_lock.as_ref().ok_or("Library root not set")?.clone()
-                };
-                let db_manager = app.state::<Arc<DbManager>>();
-                let conn = db_manager.get_connection(&root)?;
-                let blob = app::db::thumbnails::get_blob(&conn, &hash)?;
-                if blob.is_none() {
-                    tracing::warn!("Thumbnail NOT FOUND in DB for hash: {}", hash);
-                }
-                Ok::<_, Box<dyn std::error::Error>>(blob)
-            })();
-
-            match res {
-                Ok(Some(blob)) => {
-                    tauri::http::Response::builder()
-                        .header("Content-Type", "image/webp")
-                        .header("Cache-Control", "public, max-age=31536000, immutable")
-                        .body(blob)
-                        .unwrap()
-                }
-                Ok(None) => {
-                    tauri::http::Response::builder()
-                        .header("Content-Type", "image/webp")
-                        .header("Cache-Control", "no-store, must-revalidate")
-                        .body(BROKEN_THUMBNAIL.to_vec())
-                        .unwrap()
-                }
-                Err(e) => {
-                    tracing::error!("Thumbnail protocol error for hash {}: {}", hash, e);
-                    tauri::http::Response::builder()
-                        .header("Content-Type", "image/webp")
-                        .header("Cache-Control", "no-store, must-revalidate")
-                        .body(BROKEN_THUMBNAIL.to_vec())
-                        .unwrap()
-                }
-            }
-        })
-        .register_uri_scheme_protocol("asset", |ctx, request| {
-            let hash = request.uri().path().trim_start_matches('/').to_lowercase();
-            let app = ctx.app_handle();
-
-            let res = (|| {
-                let root = {
-                    let state = app.state::<Arc<LibraryRootState>>();
-                    let root_lock = state.0.lock().unwrap();
-                    root_lock.as_ref().ok_or("Library root not set")?.clone()
-                };
-                let path = app::filesystem::objects::find_canonical_objects_file(&root, &hash)?;
-                let data = std::fs::read(&path)?;
-                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                let mime = match ext.to_lowercase().as_str() {
-                    "jpg" | "jpeg" => "image/jpeg",
-                    "png" => "image/png",
-                    "gif" => "image/gif",
-                    "webp" => "image/webp",
-                    "bmp" => "image/bmp",
-                    "tiff" => "image/tiff",
-                    _ => "application/octet-stream",
-                };
-                Ok::<_, Box<dyn std::error::Error>>((data, mime))
-            })();
-
-            match res {
-                Ok((data, mime)) => {
-                    tauri::http::Response::builder()
-                        .header("Content-Type", mime)
-                        .header("Cache-Control", "public, max-age=31536000, immutable")
-                        .body(data)
-                        .unwrap()
-                }
-                Err(e) => {
-                    tracing::error!("Asset protocol error for hash {}: {}", hash, e);
-                    tauri::http::Response::builder()
-                        .status(404)
-                        .body(Vec::new())
-                        .unwrap()
-                }
-            }
-        })
         .on_window_event(|window, event| if let tauri::WindowEvent::CloseRequested { .. } = event {
             // Shutdown threads cleanly on application close
             let job_manager = window.state::<JobWorkerManager>();
@@ -152,6 +65,7 @@ fn main() {
             media::get_all_media,
             media::get_media_feed,
             media::get_media_detail,
+            media::get_thumbnail,
             media::list_tags,
             media::create_tag,
             media::tag_media,

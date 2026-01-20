@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import {
     Box,
     Button,
@@ -159,7 +160,7 @@ export function Viewer() {
                                 {loading && <Spinner color="white" size="xl" />}
                                 {!loading && detail && (
                                     <Image
-                                        src={`asset://localhost/${detail.contentHash}`}
+                                        src={convertFileSrc(detail.canonicalPath)}
                                         alt={detail.contentHash}
                                         maxW="100%"
                                         maxH="100%"

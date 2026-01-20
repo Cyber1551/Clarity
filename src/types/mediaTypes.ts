@@ -68,4 +68,5 @@ export interface MediaDetail {
     durationMs: number | null;
     files: MediaFileRef[];
     tags: Tag[];
+    canonicalPath: string;
 }

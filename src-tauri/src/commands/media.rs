@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use crate::core::constants::{SORTED_DIRECTORY, UNSORTED_DIRECTORY};
+use crate::core::constants::{SORTED_DIRECTORY, UNSORTED_DIRECTORY, BROKEN_THUMBNAIL};
 use crate::core::error::AppError;
 use crate::db::pool::DbManager;
 use crate::core::state::LibraryRootState;
@@ -159,6 +159,7 @@ pub struct MediaDetailDto {
     pub duration_ms: Option<i64>,
     pub files: Vec<FileDto>,
     pub tags: Vec<TagDto>,
+    pub canonical_path: String,
 }
 
 #[tauri::command]
@@ -174,6 +175,7 @@ pub fn get_media_detail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbMana
 
     let files = db::files::list_by_media_id(&tx, media_id).map_err(|e: AppError| e.report())?;
     let tags = db::tags::list_for_media(&tx, media_id).map_err(|e: AppError| e.report())?;
+    let objects_abs = objects::find_canonical_objects_file(root, &media.content_hash).map_err(|e: AppError| e.report())?;
 
     let files_dto = files.into_iter().map(|f| FileDto {
         id: f.id,
@@ -194,10 +196,28 @@ pub fn get_media_detail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbMana
         duration_ms: media.duration_ms,
         files: files_dto,
         tags: tags_dto,
+        canonical_path: objects_abs.to_string_lossy().to_string(),
     };
 
     tx.commit().map_err(|e| e.to_string())?;
     Ok(detail)
+}
+
+#[tauri::command]
+pub fn get_thumbnail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, hash: String) -> Result<Vec<u8>, String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
+
+    let conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
+    let blob = crate::db::thumbnails::get_blob(&conn, &hash).map_err(|e: AppError| e.report())?;
+    
+    match blob {
+        Some(b) => Ok(b),
+        None => {
+            // Return broken thumbnail if not found
+            Ok(BROKEN_THUMBNAIL.to_vec())
+        }
+    }
 }
 
 #[tauri::command]

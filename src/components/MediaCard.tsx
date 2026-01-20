@@ -2,6 +2,8 @@ import { MediaFeedItem } from "@/types/mediaTypes";
 import { Box, Image, Spinner, Text, HStack, Badge } from "@chakra-ui/react";
 import { useMediaStore } from "@/stores/mediaStore";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useEffect, useState } from "react";
+import { get_thumbnail } from "@/api/libraryApi";
 
 interface MediaCardProps {
     item: MediaFeedItem;
@@ -9,6 +11,41 @@ interface MediaCardProps {
 
 const MediaCard = ({ item }: MediaCardProps) => {
     const openViewer = useMediaStore(s => s.openViewer);
+    const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        let active = true;
+        let objectUrl: string | null = null;
+
+        async function loadThumb() {
+            try {
+                const blob = await get_thumbnail(item.contentHash);
+                if (!active) return;
+                
+                const newUrl = URL.createObjectURL(new Blob([blob], { type: "image/webp" }));
+                if (!active) {
+                    URL.revokeObjectURL(newUrl);
+                    return;
+                }
+                objectUrl = newUrl;
+                setThumbUrl(objectUrl);
+            } catch (e) {
+                console.error("Failed to load thumbnail", e);
+            }
+        }
+
+        if (item.thumbnailStatus === "done") {
+            void loadThumb();
+        }
+
+        return () => {
+            active = false;
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+    }, [item.contentHash, item.thumbnailStatus]);
+
     const isProcessing =
         item.hashStatus === "pending" ||
         item.metadataStatus === "pending" ||
@@ -42,11 +79,12 @@ const MediaCard = ({ item }: MediaCardProps) => {
         >
             {/* Thumbnail image */}
             <Image
-                src={`thumbnail://localhost/${item.contentHash}`}
+                src={thumbUrl ?? ""}
                 alt={item.fileName ?? item.contentHash}
                 w="full"
                 h="full"
                 objectFit="cover"
+                fallback={<Box w="full" h="full" bg="gray.200" />}
             />
 
             {/* Tag Overlay - Top right */}
