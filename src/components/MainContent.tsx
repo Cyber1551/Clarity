@@ -2,6 +2,7 @@ import { Box, Tabs } from "@chakra-ui/react";
 import { useEffect, useMemo } from "react";
 import { useMediaStore } from "@/stores/mediaStore";
 import MediaGrid from "./MediaGrid";
+import ImportsView from "./ImportsView";
 import { listen } from "@tauri-apps/api/event";
 import { throttle } from "lodash-es";
 
@@ -40,8 +41,14 @@ const MainContent = () => {
             <Tabs.Content value="dashboard" flex="1" overflowY="auto">
                 Dashboard
             </Tabs.Content>
+            <Tabs.Content value="imports" flex="1" minH={0} display="flex" flexDirection="column">
+                <ImportsView />
+            </Tabs.Content>
             <Tabs.Content value="library" flex="1" minH={0} display="flex" flexDirection="column">
                 <MediaGrid items={items} isLoading={isLoading} error={error} />
+            </Tabs.Content>
+            <Tabs.Content value="people" flex="1" overflowY="auto">
+                People
             </Tabs.Content>
             <Tabs.Content value="explore" flex="1" overflowY="auto">
                 Explore

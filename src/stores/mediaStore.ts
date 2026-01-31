@@ -50,11 +50,6 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
     },
 
     openViewer(mediaId) {
-        const exists = get().items.some((m) => m.mediaId === mediaId);
-        if (!exists) {
-            console.warn("Tried to open viewer for media not in current items", mediaId);
-            return;
-        }
         set({ viewer: { mediaId } });
     },
 

@@ -9,7 +9,7 @@ use crate::jobs::{JobRow, JobStatus};
 use std::sync::Arc;
 use crate::db::pool::DbManager;
 
-pub fn handle_metadata_job(db_manager: Arc<DbManager>, library_root: &Path, job: &JobRow) -> AppResult<()> {
+pub async fn handle_metadata_job(db_manager: Arc<DbManager>, library_root: &Path, job: &JobRow) -> AppResult<()> {
     let media_id = job.require_media_id()?;
     let media = {
         let mut conn = db_manager.get_connection(library_root)?;
@@ -33,7 +33,7 @@ pub fn handle_metadata_job(db_manager: Arc<DbManager>, library_root: &Path, job:
     let canonical_path = filesystem::objects::find_canonical_objects_file(library_root, &media.content_hash)?;
 
     // HEAVY WORK: Probe media metadata outside transaction and WITHOUT holding a connection
-    let meta_result = meta::probe_media_metadata(&canonical_path, media.media_type);
+    let meta_result = meta::probe_media_metadata(&canonical_path, media.media_type).await;
 
     let now = now_ms();
 

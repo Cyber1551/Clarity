@@ -7,10 +7,10 @@ use std::sync::mpsc::RecvTimeoutError;
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info};
-use crate::core::constants::{SORTED_DIRECTORY, WATCHER_DEBOUNCE_DURATION};
+use crate::core::constants::{LIBRARY_DIRECTORY, WATCHER_DEBOUNCE_DURATION};
 use crate::core::error::AppResult;
 
-/// Manages filesystem watching for the Sorted Media directory.
+/// Manages filesystem watching for the Library directory.
 ///
 /// Detects manual changes and marks the library as dirty.
 pub struct FileWatcherManager {
@@ -77,20 +77,20 @@ fn spawn_watcher(library_root: PathBuf, dirty: Arc<AtomicBool>, shutdown: Arc<At
 }
 
 fn run_watcher(library_root: &Path, dirty: Arc<AtomicBool>, shutdown: Arc<AtomicBool>, app_handle: Arc<Mutex<Option<AppHandle>>>) -> AppResult<()> {
-    let sorted_dir = library_root.join(SORTED_DIRECTORY);
+    let library_dir = library_root.join(LIBRARY_DIRECTORY);
 
-    if !sorted_dir.exists() {
-        debug!("Sorted directory does not exist yet: {}", sorted_dir.display());
+    if !library_dir.exists() {
+        debug!("Library directory does not exist yet: {}", library_dir.display());
     }
 
     let (tx, rx) = std::sync::mpsc::channel::<Result<Event, notify::Error>>();
     let mut watcher = RecommendedWatcher::new(tx, Config::default())
         .map_err(|e| crate::core::error::AppError::Other(format!("Failed to create watcher: {e}")))?;
 
-    // Note: We might need to periodically retry watching if SORTED_DIRECTORY doesn't exist yet
+    // Note: We might need to periodically retry watching if LIBRARY_DIRECTORY doesn't exist yet
     // For now, we assume it's created during init or we'll just fail to watch it until next restart.
-    if sorted_dir.exists() {
-        watcher.watch(&sorted_dir, RecursiveMode::Recursive)
+    if library_dir.exists() {
+        watcher.watch(&library_dir, RecursiveMode::Recursive)
             .map_err(|e| crate::core::error::AppError::Other(format!("Failed to watch directory: {e}")))?;
     }
 
@@ -114,7 +114,7 @@ fn run_watcher(library_root: &Path, dirty: Arc<AtomicBool>, shutdown: Arc<Atomic
             Err(RecvTimeoutError::Timeout) => {
                 if let Some(last_time) = last_event_time {
                     if last_time.elapsed() >= WATCHER_DEBOUNCE_DURATION && dirty.load(Ordering::Relaxed) {
-                        info!("Filesystem change detected in Sorted Media. Marking library as dirty.");
+                        info!("Filesystem change detected in Library. Marking library as dirty.");
                         if let Ok(handle_guard) = app_handle.lock() {
                             if let Some(ref app) = *handle_guard {
                                 let _ = app.emit("library-dirty", true);

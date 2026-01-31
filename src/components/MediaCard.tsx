@@ -18,10 +18,10 @@ const MediaCard = ({ item }: MediaCardProps) => {
 
         async function loadThumb() {
             try {
-                const blob = await get_thumbnail(item.contentHash);
+                const { blob, mimetype } = await get_thumbnail(item.contentHash);
                 if (!active) return;
                 
-                const newUrl = URL.createObjectURL(new Blob([blob], { type: "image/webp" }));
+                const newUrl = URL.createObjectURL(new Blob([blob as any], { type: mimetype }));
                 if (!active) {
                     URL.revokeObjectURL(newUrl);
                     return;
@@ -61,7 +61,7 @@ const MediaCard = ({ item }: MediaCardProps) => {
     return (
         <Box
             position="relative"
-            aspectRatio="1"
+            aspectRatio="4/3"
             borderRadius="md"
             overflow="hidden"
             cursor="pointer"
@@ -78,8 +78,7 @@ const MediaCard = ({ item }: MediaCardProps) => {
                 alt={item.fileName ?? item.contentHash}
                 w="full"
                 h="full"
-                objectFit="cover"
-                fallback={<Box w="full" h="full" bg="gray.200" />}
+                objectFit="contain"
             />
 
             {/* Processing overlay */}

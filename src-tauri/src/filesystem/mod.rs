@@ -3,3 +3,4 @@ pub mod directory;
 pub mod meta;
 pub mod objects;
 pub mod watcher;
+pub mod hash;

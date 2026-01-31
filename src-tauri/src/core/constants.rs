@@ -1,10 +1,11 @@
 use std::time::Duration;
 
 pub const CONFIG_FILE_NAME: &str = "config.json";
-pub const FFMPEG_BIN: &str = "bin/ffmpeg";
-pub const FFPROBE_BIN: &str = "bin/ffprobe";
+pub const FFMPEG_BIN: &str = "ffmpeg";
+pub const FFPROBE_BIN: &str = "ffprobe";
 pub const WORKER_THREAD_SLEEP_DURATION: Duration = Duration::from_millis(1000);
 pub const WATCHER_DEBOUNCE_DURATION: Duration = Duration::from_millis(500);
+pub const MAX_THREADS: usize = 1;
 
 // Job processing
 pub const MAX_JOB_ATTEMPTS: i32 = 3;
@@ -22,8 +23,8 @@ pub const BROKEN_THUMBNAIL: &[u8] = include_bytes!("../../assets/broken_thumbnai
 
 // Directories
 pub const OBJECTS_DIRECTORY: &str = ".objects";
-pub const UNSORTED_DIRECTORY: &str = "Unsorted Media";
-pub const SORTED_DIRECTORY: &str = "Sorted Media";
+pub const IMPORTS_DIRECTORY: &str = "Imports";
+pub const LIBRARY_DIRECTORY: &str = "Library";
 
 // Media Types
 pub const VALID_IMAGE_EXTENSIONS: [&str; 8] = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "svg", "webp"];

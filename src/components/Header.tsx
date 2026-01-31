@@ -1,7 +1,8 @@
 import React from 'react';
-import { Flex, HStack, IconButton, Tabs, Text } from "@chakra-ui/react";
-import { LuSearch, LuSettings } from "react-icons/lu";
+import { Button, Flex, HStack, IconButton, Tabs, Text } from "@chakra-ui/react";
+import { LuSearch, LuSettings, LuPlus } from "react-icons/lu";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
+import { import_files } from "@/api/importApi";
 
 interface HeaderProps {
     folderPath: string | null;
@@ -11,6 +12,21 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = () => {
     const setSettingsDialogOpen = useInterfaceStore(s => s.setSettingsDialogOpen);
+    const setActiveTab = useInterfaceStore(s => s.setActiveTab);
+    const setSelectedImportFolder = useInterfaceStore(s => s.setSelectedImportFolder);
+
+    const handleImport = async () => {
+        try {
+            const folderName = await import_files();
+            if (folderName) {
+                setSelectedImportFolder(folderName);
+                setActiveTab("imports");
+            }
+        } catch (e) {
+            console.error("Import failed", e);
+        }
+    };
+
     return (
         <Flex
             as="header"
@@ -28,8 +44,14 @@ const Header: React.FC<HeaderProps> = () => {
                 <Tabs.Trigger value="dashboard">
                     Dashboard
                 </Tabs.Trigger>
+                <Tabs.Trigger value="imports">
+                    Imports
+                </Tabs.Trigger>
                 <Tabs.Trigger value="library">
                     Library
+                </Tabs.Trigger>
+                <Tabs.Trigger value="people">
+                    People
                 </Tabs.Trigger>
                 <Tabs.Trigger value="explore">
                     Explore
@@ -44,6 +66,10 @@ const Header: React.FC<HeaderProps> = () => {
 
             {/* Right: search, bell, avatar */}
             <HStack gap={3}>
+                <Button size="sm" onClick={handleImport} variant="outline">
+                    <LuPlus /> Import
+                </Button>
+                
                 <IconButton aria-label="Search" variant="ghost" rounded="full">
                     <LuSearch />
                 </IconButton>

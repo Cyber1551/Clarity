@@ -64,7 +64,7 @@ export const SettingsDialog = () => {
 
                                     <Text fontSize="xs" color="fg.muted">
                                         This is the root folder used for your media library. All
-                                        scans, tags, thumbnails, and hard-linked views (by tag / set)
+                                        imports, thumbnails, and hard-linked views
                                         will live under this directory.
                                     </Text>
                                 </Stack>

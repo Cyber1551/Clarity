@@ -65,7 +65,8 @@ pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
             width               INTEGER,
             height              INTEGER,
             duration_ms         INTEGER,
-            rating              INTEGER NOT NULL DEFAULT 0,
+            quality_rating      INTEGER NOT NULL DEFAULT 0,
+            favorite_rating     INTEGER NOT NULL DEFAULT 0,
             loved               INTEGER NOT NULL DEFAULT 0,
             reviewed_at         INTEGER,
             hash_status         TEXT NOT NULL DEFAULT 'pending',
@@ -112,12 +113,13 @@ pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
         CREATE TABLE IF NOT EXISTS thumbnails (
             content_hash        TEXT PRIMARY KEY REFERENCES media(content_hash) ON DELETE CASCADE,
             thumbnail_blob      BLOB NOT NULL,
+            mimetype            TEXT NOT NULL,
             width               INTEGER NOT NULL,
             height              INTEGER NOT NULL,
             created_at          INTEGER NOT NULL,
             updated_at          INTEGER NOT NULL
         );
-    "#)?; // AppError::Database
+    "#)?;
 
     // `Jobs` table holds all queued and in-progress jobs for hashing, image/video probing, and thumbnail generation
     conn.execute_batch(r#"

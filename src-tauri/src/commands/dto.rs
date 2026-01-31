@@ -2,6 +2,7 @@ use serde::Serialize;
 use crate::media::{MediaType, MediaItem};
 use crate::jobs::JobStatus;
 use crate::media_links::MediaLinkRow;
+use crate::thumbnails::ThumbnailRow;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +16,8 @@ pub struct MediaItemDto {
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub duration_ms: Option<i64>,
-    pub rating: i32,
+    pub quality_rating: i32,
+    pub favorite_rating: i32,
     pub loved: bool,
     pub hash_status: JobStatus,
     pub metadata_status: JobStatus,
@@ -36,7 +38,8 @@ impl From<MediaItem> for MediaItemDto {
             width: item.media.width,
             height: item.media.height,
             duration_ms: item.media.duration_ms,
-            rating: item.media.rating,
+            quality_rating: item.media.quality_rating,
+            favorite_rating: item.media.favorite_rating,
             loved: item.media.loved,
             hash_status: item.media.hash_status,
             metadata_status: item.media.metadata_status,
@@ -78,8 +81,25 @@ pub struct MediaDetailDto {
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub duration_ms: Option<i64>,
-    pub rating: i32,
+    pub quality_rating: i32,
+    pub favorite_rating: i32,
     pub loved: bool,
     pub files: Vec<FileDto>,
     pub canonical_path: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThumbnailDto {
+    pub blob: Vec<u8>,
+    pub mimetype: String,
+}
+
+impl From<ThumbnailRow> for ThumbnailDto {
+    fn from(thumbnail: ThumbnailRow) -> Self {
+        Self {
+            blob: thumbnail.thumbnail_blob,
+            mimetype: thumbnail.mimetype,
+        }
+    }
 }

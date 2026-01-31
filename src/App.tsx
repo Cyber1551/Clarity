@@ -9,6 +9,8 @@ import { initialize_library } from "@/api/libraryApi.ts";
 import { listen } from "@tauri-apps/api/event";
 import { Viewer } from "@/components/Viewer";
 
+import { useInterfaceStore } from "@/stores/interfaceStore.ts";
+
 const App = () => {
     const config = useConfigStore(s => s.config);
     const isLoading = useConfigStore(s => s.isLoading);
@@ -17,6 +19,8 @@ const App = () => {
     const pickLibraryRoot = useConfigStore(s => s.pickLibraryRoot);
     const loadAllMedia = useMediaStore(s => s.loadAllMedia);
     const setIsLoading = useMediaStore(s => s.setIsLoading);
+    const activeTab = useInterfaceStore(s => s.activeTab);
+    const setActiveTab = useInterfaceStore(s => s.setActiveTab);
 
     useEffect(() => {
         void initConfig();
@@ -78,7 +82,8 @@ const App = () => {
     return (
         <Box minH={"100vh"}>
             <Tabs.Root
-                defaultValue="library"
+                value={activeTab}
+                onValueChange={(e) => setActiveTab(e.value)}
                 variant={"enclosed"}
                 display="flex"
                 flexDirection="column"

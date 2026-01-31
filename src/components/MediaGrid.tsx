@@ -14,7 +14,7 @@ const GridList = forwardRef<HTMLDivElement, any>(({ style, children, ...props },
     <Grid
         ref={ref}
         {...props}
-        templateColumns="repeat(auto-fill, minmax(200px, 1fr))"
+        templateColumns="repeat(auto-fill, minmax(160px, 1fr))"
         gap={4}
         p={4}
         style={style}

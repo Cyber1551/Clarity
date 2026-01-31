@@ -3,30 +3,37 @@ use std::path::{Path, PathBuf};
 use crate::core::constants::OBJECTS_DIRECTORY;
 use crate::core::error::{AppError, AppResult};
 
-/// Deduplicates a file to the .objects directory using hard links.
-///
-/// If this is the first time seeing this content hash, moves the file to .objects.
-/// Otherwise, removes the file and creates a hard link to the canonical .objects file.
-pub fn dedupe_to_objects(full_path: &Path, library_root: &Path, content_hash: &str, ext: &str, ) -> AppResult<()> {
+/// Ingests a file from an external source into the .objects store and
+/// creates a hardlink projection at the target path.
+pub fn ingest_and_link(
+    source_path: &Path,
+    library_root: &Path,
+    content_hash: &str,
+    ext: &str,
+    projection_path: &Path
+) -> AppResult<()> {
     let canonical_path = canonical_objects_path(library_root, content_hash, ext);
 
-    // Ensure .objects exists (should already)
-    if let Some(parent) = canonical_path.parent() {
+    // 1. Ensure canonical version exists in .objects
+    if !canonical_path.exists() {
+        if let Some(parent) = canonical_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        // Copy directly from source to Source of Truth (.objects)
+        fs::copy(source_path, &canonical_path)?;
+    }
+
+    // 2. Create the projection (hardlink) in the library
+    if projection_path.exists() {
+        fs::remove_file(projection_path)?;
+    }
+
+    // Ensure parent of projection path exists
+    if let Some(parent) = projection_path.parent() {
         fs::create_dir_all(parent)?;
     }
 
-    if !canonical_path.exists() {
-        // First time we've seen this content: move file to .objects
-        fs::rename(full_path, &canonical_path)?;
-    } else {
-        // Canonical already exists: remove this full_path before recreating as hardlink
-        if full_path.exists() {
-            fs::remove_file(full_path)?;
-        }
-    }
-
-    // Now create a hard link from canonical back to Unsorted path
-    fs::hard_link(&canonical_path, full_path)?;
+    fs::hard_link(&canonical_path, projection_path)?;
 
     Ok(())
 }

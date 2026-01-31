@@ -13,7 +13,8 @@ pub fn get_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<MediaRow>
             width,
             height,
             duration_ms,
-            rating,
+            quality_rating,
+            favorite_rating,
             loved,
             hash_status,
             metadata_status,
@@ -38,7 +39,8 @@ pub fn get_by_content_hash(conn: &Connection, content_hash: &str) -> AppResult<O
             width,
             height,
             duration_ms,
-            rating,
+            quality_rating,
+            favorite_rating,
             loved,
             hash_status,
             metadata_status,
@@ -205,7 +207,8 @@ pub fn get_media_items(conn: &Connection) -> AppResult<Vec<MediaItem>> {
             m.width,
             m.height,
             m.duration_ms,
-            m.rating,
+            m.quality_rating,
+            m.favorite_rating,
             m.loved,
             m.hash_status,
             m.metadata_status,
@@ -218,11 +221,58 @@ pub fn get_media_items(conn: &Connection) -> AppResult<Vec<MediaItem>> {
             rf.file_name,
             rf.ext
         FROM media m
-        LEFT JOIN media_links rf ON rf.id = ( SELECT id FROM media_links WHERE media_id = m.id LIMIT 1 )
+        INNER JOIN media_links rf ON rf.id = ( 
+            SELECT id FROM media_links 
+            WHERE media_id = m.id AND dir_path LIKE 'Library%' 
+            LIMIT 1 
+        )
         ORDER BY m.created_at DESC
     "#)?;
 
     let rows = stmt.query_map(params![], |row| {
+        Ok(MediaItem {
+            media: MediaRow::from_row(row)?,
+            rel_path: row.get("rel_path")?,
+            dir_path: row.get("dir_path")?,
+            file_name: row.get("file_name")?,
+            ext: row.get("ext")?,
+        })
+    })?;
+
+    let mut items = Vec::new();
+    for row in rows { items.push(row?); }
+    Ok(items)
+}
+
+pub fn get_media_items_in_dir(conn: &Connection, dir_path: &str) -> AppResult<Vec<MediaItem>> {
+    let mut stmt = conn.prepare(r#"
+        SELECT
+            m.id,
+            m.content_hash,
+            m.media_type,
+            m.width,
+            m.height,
+            m.duration_ms,
+            m.quality_rating,
+            m.favorite_rating,
+            m.loved,
+            m.hash_status,
+            m.metadata_status,
+            m.thumbnail_status,
+            m.reviewed_at,
+            m.created_at,
+            m.updated_at,
+            rf.rel_path,
+            rf.dir_path,
+            rf.file_name,
+            rf.ext
+        FROM media m
+        INNER JOIN media_links rf ON rf.media_id = m.id
+        WHERE rf.dir_path = ?1
+        ORDER BY m.created_at DESC
+    "#)?;
+
+    let rows = stmt.query_map(params![dir_path], |row| {
         Ok(MediaItem {
             media: MediaRow::from_row(row)?,
             rel_path: row.get("rel_path")?,

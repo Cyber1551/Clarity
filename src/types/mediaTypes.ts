@@ -12,7 +12,8 @@ export interface MediaItem {
     width: number | null;
     height: number | null;
     durationMs: number | null;
-    rating: number;
+    qualityRating: number;
+    favoriteRating: number;
     loved: boolean;
     hashStatus: JobStatus;
     metadataStatus: JobStatus;
@@ -42,7 +43,8 @@ export interface MediaDetail {
     width: number | null;
     height: number | null;
     durationMs: number | null;
-    rating: number;
+    qualityRating: number;
+    favoriteRating: number;
     loved: boolean;
     files: MediaFileRef[];
     canonicalPath: string;

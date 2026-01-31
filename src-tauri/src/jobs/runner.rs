@@ -1,10 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread;
 use tauri::{AppHandle, Emitter};
 use tracing::{info, debug, error};
-use crate::core::constants::WORKER_THREAD_SLEEP_DURATION;
+use crate::core::constants::{MAX_THREADS, WORKER_THREAD_SLEEP_DURATION};
 use crate::core::error::AppResult;
 use crate::db;
 use crate::jobs::{workers, JobType};
@@ -82,7 +81,7 @@ impl JobWorkerManager {
 
 
 fn spawn_job_workers(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<JobMetrics>, app_handle: Arc<Mutex<Option<AppHandle>>>, db_manager: Arc<DbManager>) {
-    let num_threads = num_cpus::get().max(1);
+    let num_threads = num_cpus::get().min(MAX_THREADS);
     info!("Spawning {} background worker threads", num_threads);
 
     for i in 0..num_threads {
@@ -92,16 +91,16 @@ fn spawn_job_workers(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: 
         let app_handle = app_handle.clone();
         let db_manager = db_manager.clone();
 
-        thread::spawn(move || {
+        tauri::async_runtime::spawn(async move {
             debug!("Worker thread {} started", i);
-            if let Err(e) = worker_loop(library_root, shutdown, metrics, app_handle, db_manager) {
+            if let Err(e) = worker_loop(library_root, shutdown, metrics, app_handle, db_manager).await {
                 error!("Worker thread {} exited with error: {}", i, e);
             }
         });
     }
 }
 
-fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<JobMetrics>, app_handle: Arc<Mutex<Option<AppHandle>>>, db_manager: Arc<DbManager>) -> AppResult<()> {
+async fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<JobMetrics>, app_handle: Arc<Mutex<Option<AppHandle>>>, db_manager: Arc<DbManager>) -> AppResult<()> {
     info!("Job worker loop started");
 
     while !shutdown.load(Ordering::Relaxed) {
@@ -115,15 +114,15 @@ fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<Jo
         };
 
         let Some(job) = claimed_job else {
-            thread::sleep(WORKER_THREAD_SLEEP_DURATION);
+            tokio::time::sleep(WORKER_THREAD_SLEEP_DURATION).await;
             continue;
         };
 
         info!("Claimed job: id={} type={:?} file_id={:?}", job.id, job.job_type, job.file_id);
 
         let result = match job.job_type {
-            JobType::Metadata => workers::handle_metadata_job(db_manager.clone(), &library_root, &job),
-            JobType::Thumbnail => workers::handle_thumbnail_job(db_manager.clone(), &library_root, &job),
+            JobType::Metadata => workers::handle_metadata_job(db_manager.clone(), &library_root, &job).await,
+            JobType::Thumbnail => workers::handle_thumbnail_job(db_manager.clone(), &library_root, &job).await,
         };
 
         match result {
@@ -136,10 +135,8 @@ fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<Jo
                 metrics.record_success(&job.job_type);
                 info!("Job completed successfully: id={} type={:?}", job.id, job.job_type);
 
-                if metrics.jobs_processed() % 20 == 0 {
-                    if let Ok(hg) = app_handle.lock() {
-                        if let Some(ref a) = *hg { let _ = a.emit("job-completed", ()); }
-                    }
+                if let Ok(hg) = app_handle.lock() {
+                    if let Some(ref a) = *hg { let _ = a.emit("job-completed", ()); }
                 }
             }
             Err(e) => {
@@ -155,10 +152,8 @@ fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<Jo
                 }
 
                 // Emit event to frontend (even on error, so UI can update)
-                if metrics.jobs_processed() % 20 == 0 {
-                    if let Ok(hg) = app_handle.lock() {
-                        if let Some(ref a) = *hg { let _ = a.emit("job-completed", ()); }
-                    }
+                if let Ok(hg) = app_handle.lock() {
+                    if let Some(ref a) = *hg { let _ = a.emit("job-completed", ()); }
                 }
             }
         }

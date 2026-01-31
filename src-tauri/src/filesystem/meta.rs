@@ -1,10 +1,11 @@
 use std::path::Path;
-use std::process::Command;
 use std::time::UNIX_EPOCH;
 use image::ImageReader;
 use serde::Deserialize;
+use tauri_plugin_shell::ShellExt;
 use crate::core::constants::FFPROBE_BIN;
 use crate::core::error::{AppError, AppResult};
+use crate::core::app_handle;
 use crate::media::MediaType;
 
 pub struct ProbedMetadata {
@@ -44,12 +45,12 @@ pub fn get_mtime(path: &Path) -> AppResult<i64> {
     Ok(mtime)
 }
 
-pub fn probe_media_metadata(path: &Path, media_type: MediaType) -> AppResult<ProbedMetadata> {
+pub async fn probe_media_metadata(path: &Path, media_type: MediaType) -> AppResult<ProbedMetadata> {
     // For now, we just return None values and let the pipeline continue.
     // Could replace this with actual logic later if this causes a problem
     let probed_metadata = match media_type {
         MediaType::Image => probe_image_metadata(path)?,
-        MediaType::Video => probe_video_metadata(path)?,
+        MediaType::Video => probe_video_metadata(path).await?,
         MediaType::Unknown => ProbedMetadata {
             width: None,
             height: None,
@@ -77,8 +78,11 @@ fn probe_image_metadata(path: &Path) -> AppResult<ProbedMetadata> {
     })
 }
 
-fn probe_video_metadata(path: &Path) -> AppResult<ProbedMetadata> {
-    let output = Command::new(Path::new(FFPROBE_BIN))
+async fn probe_video_metadata(path: &Path) -> AppResult<ProbedMetadata> {
+    let app = app_handle::get_handle();
+    let ffprobe = app.shell().sidecar(FFPROBE_BIN).map_err(|e| AppError::Other(format!("Failed to find ffprobe sidecar: {e}")))?;
+
+    let output = ffprobe
         .arg("-v")
         .arg("quiet")
         .arg("-print_format")
@@ -87,7 +91,7 @@ fn probe_video_metadata(path: &Path) -> AppResult<ProbedMetadata> {
         .arg("-select_streams")
         .arg("v:0")
         .arg(path)
-        .output()
+        .output().await
         .map_err(|e| AppError::Other(format!("running ffprobe on {path:?}: {e}")))?;
 
     if !output.status.success() {

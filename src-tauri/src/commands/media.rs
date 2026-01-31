@@ -48,7 +48,8 @@ pub fn get_media_detail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbMana
         width: media.width,
         height: media.height,
         duration_ms: media.duration_ms,
-        rating: media.rating,
+        quality_rating: media.quality_rating,
+        favorite_rating: media.favorite_rating,
         loved: media.loved,
         files: files_dto,
         canonical_path: objects_abs.to_string_lossy().to_string(),
@@ -59,18 +60,21 @@ pub fn get_media_detail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbMana
 }
 
 #[tauri::command]
-pub fn get_thumbnail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, hash: String) -> Result<Vec<u8>, String> {
+pub fn get_thumbnail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager>>, library_root_state: State<'_, Arc<LibraryRootState>>, hash: String) -> Result<ThumbnailDto, String> {
     let root_lock = library_root_state.0.lock().unwrap();
     let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
 
     let conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
-    let blob = crate::db::thumbnails::get_blob(&conn, &hash).map_err(|e: AppError| e.report())?;
+    let thumb = db::thumbnails::get_thumbnail(&conn, &hash).map_err(|e: AppError| e.report())?;
     
-    match blob {
-        Some(b) => Ok(b),
+    match thumb {
+        Some(row) => Ok(ThumbnailDto::from(row)),
         None => {
             // Return broken thumbnail if not found
-            Ok(BROKEN_THUMBNAIL.to_vec())
+            Ok(ThumbnailDto {
+                blob: BROKEN_THUMBNAIL.to_vec(),
+                mimetype: "image/webp".to_string(),
+            })
         }
     }
 }

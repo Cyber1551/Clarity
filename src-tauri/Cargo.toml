@@ -28,6 +28,7 @@ tauri-plugin-shell = "2.3.3"
 tauri-plugin-dialog = "2.6.0"
 tauri-plugin-fs = "2.4.5"
 thiserror = "2.0.17"
+chrono = "0.4"
 notify = "8.2.0"
 strum = { version = "0.27.2", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp"] }
@@ -35,6 +36,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 rayon = "1.10"
 num_cpus = "1.16"
+tokio = "1.43.0"
+uuid = { version = "1.12.1", features = ["v4"] }
 
 [dev-dependencies]
 tempfile = "3.13"

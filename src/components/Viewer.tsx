@@ -64,7 +64,7 @@ export function Viewer() {
                     <Dialog.Content bg="black" color="white" h="100vh" w="100vw" m={0} p={0} border="none">
                         <Dialog.CloseTrigger pos="absolute" top={4} right={4} color="white" />
                         
-                        <HStack h="full" w="full" spacing={0}>
+                        <HStack h="full" w="full" gap={0}>
                             {/* Main Content Area */}
                             <Box flex={1} position="relative" display="flex" alignItems="center" justifyContent="center" bg="black" overflow="hidden">
                                 {loading && <Spinner size="xl" />}
@@ -92,14 +92,14 @@ export function Viewer() {
                             </Box>
 
                             {/* Sidebar Info */}
-                            <VStack w="320px" bg="gray.900" h="full" p={6} align="stretch" spacing={6} borderLeftWidth="1px" borderColor="gray.800">
+                            <VStack w="320px" bg="gray.900" h="full" p={6} align="stretch" gap={6} borderLeftWidth="1px" borderColor="gray.800">
                                 <Dialog.Header p={0}>
                                     <Dialog.Title fontSize="xl">Media Detail</Dialog.Title>
                                 </Dialog.Header>
 
                                 {detail && (
                                     <>
-                                        <VStack align="stretch" spacing={2}>
+                                        <VStack align="stretch" gap={2}>
                                             <Text fontWeight="bold" color="gray.400" fontSize="sm">INFO</Text>
                                             <Text fontSize="sm">Type: {detail.mediaType}</Text>
                                             {detail.width && <Text fontSize="sm">Resolution: {detail.width} x {detail.height}</Text>}
@@ -107,40 +107,59 @@ export function Viewer() {
                                             <Text fontSize="xs" color="gray.500" wordBreak="break-all">Hash: {detail.contentHash}</Text>
                                         </VStack>
 
-                                        <VStack align="stretch" spacing={4}>
-                                            <Text fontWeight="bold" color="gray.400" fontSize="sm">RATINGS</Text>
-                                            <HStack>
-                                                <IconButton 
-                                                    aria-label="Love" 
-                                                    variant={detail.loved ? "solid" : "ghost"} 
-                                                    colorPalette={detail.loved ? "red" : "gray"}
-                                                >
-                                                    <Heart fill={detail.loved ? "currentColor" : "none"} />
-                                                </IconButton>
-
-                                                <HStack spacing={1}>
+                                        <VStack align="stretch" gap={4}>
+                                            <VStack align="stretch" gap={2}>
+                                                <Text fontWeight="bold" color="gray.400" fontSize="sm">QUALITY</Text>
+                                                <HStack gap={1}>
                                                     {[1, 2, 3].map((star) => (
                                                         <IconButton
                                                             key={star}
-                                                            aria-label={`Rate ${star}`}
+                                                            aria-label={`Quality ${star}`}
                                                             variant="ghost"
                                                             size="sm"
-                                                            color={detail.rating >= star ? "yellow.400" : "gray.600"}
+                                                            color={detail.qualityRating >= star ? "yellow.400" : "gray.600"}
                                                         >
-                                                            <Star fill={detail.rating >= star ? "currentColor" : "none"} />
+                                                            <Star fill={detail.qualityRating >= star ? "currentColor" : "none"} />
                                                         </IconButton>
                                                     ))}
                                                 </HStack>
-                                            </HStack>
+                                            </VStack>
+
+                                            <VStack align="stretch" gap={2}>
+                                                <Text fontWeight="bold" color="gray.400" fontSize="sm">FAVORITE</Text>
+                                                <HStack gap={4}>
+                                                    <IconButton 
+                                                        aria-label="Love" 
+                                                        variant={detail.loved ? "solid" : "ghost"} 
+                                                        colorPalette={detail.loved ? "red" : "gray"}
+                                                    >
+                                                        <Heart fill={detail.loved ? "currentColor" : "none"} />
+                                                    </IconButton>
+
+                                                    <HStack gap={1}>
+                                                        {[1, 2, 3].map((star) => (
+                                                            <IconButton
+                                                                key={star}
+                                                                aria-label={`Favorite ${star}`}
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                color={detail.favoriteRating >= star ? "yellow.400" : "gray.600"}
+                                                            >
+                                                                <Star fill={detail.favoriteRating >= star ? "currentColor" : "none"} />
+                                                            </IconButton>
+                                                        ))}
+                                                    </HStack>
+                                                </HStack>
+                                            </VStack>
                                         </VStack>
 
-                                        <VStack align="stretch" spacing={2} flex={1} overflowY="auto">
+                                        <VStack align="stretch" gap={2} flex={1} overflowY="auto">
                                             <Text fontWeight="bold" color="gray.400" fontSize="sm">PATHS ({detail.files.length})</Text>
                                             {detail.files.map((f) => (
                                                 <Tooltip key={f.id} content={f.relPath} showArrow>
                                                     <Box p={2} bg="gray.800" borderRadius="md" fontSize="xs">
-                                                        <Text isTruncated>{f.fileName}{f.ext ? `.${f.ext}` : ""}</Text>
-                                                        <Text fontSize="2xs" color="gray.500" isTruncated>{f.dirPath}</Text>
+                                                        <Text truncate>{f.fileName}{f.ext ? `.${f.ext}` : ""}</Text>
+                                                        <Text fontSize="2xs" color="gray.500" truncate>{f.dirPath}</Text>
                                                     </Box>
                                                 </Tooltip>
                                             ))}

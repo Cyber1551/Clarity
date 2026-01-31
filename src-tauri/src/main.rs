@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::Manager;
-use app::commands::{library, media};
+use app::commands::{library, media, import};
 use app::core::config;
 use app::core::logging;
 use app::jobs::runner::JobWorkerManager;
@@ -24,6 +24,7 @@ fn main() {
         .manage(library_root_state.clone())
         .setup(move |app| {
             let handle = app.handle();
+            app::core::app_handle::set_handle(handle.clone());
             let job_manager = app.state::<JobWorkerManager>();
 
             // Set app handles for event emission
@@ -58,6 +59,9 @@ fn main() {
             media::get_media_items,
             media::get_media_detail,
             media::get_thumbnail,
+            import::import_files,
+            import::get_import_folders,
+            import::get_items_in_import_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -6,9 +6,30 @@
     "core:default",
     "fs:default",
     "fs:allow-watch",
+    "dialog:default",
+    "shell:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "ffprobe",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": ["**"]
+      "allow": ["**", "**/*", "**/.*", "**/.*/**"]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": ["**", "**/*", "**/.*", "**/.*/**"]
     }
   ]
 }
