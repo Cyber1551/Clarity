@@ -8,7 +8,7 @@ use crate::filesystem;
 
 /// Garbage collects orphaned media after a file deletion.
 ///
-/// Deletes media row, thumbnail, and .objects/ file if no other files reference this media.
+/// Deletes media row, thumbnail, and .objects/ file if no other media_links reference this media.
 /// Returns true if collection occurred, false if media is still referenced.
 pub fn collect_orphaned_media(tx: &Transaction, library_root: &Path, media_id: i64) -> AppResult<bool> {
     let deleted_hash = db::media::delete_unreferenced_by_id(tx, media_id)?;
@@ -47,14 +47,12 @@ pub fn collect_all_orphaned_media(tx: &Transaction, library_root: &Path) -> AppR
 
 /// Deletes a file by ID and performs garbage collection on orphaned media.
 pub fn delete_file_by_id(tx: &Transaction, library_root: &Path, file_id: i64) -> AppResult<()> {
-    let deleted_file = db::files::delete_by_id(tx, file_id)?;
+    let deleted_file = db::media_links::delete_by_id(tx, file_id)?;
 
     if let Some(file) = deleted_file {
-        if let Some(media_id) = file.media_id {
-            let collected = collect_orphaned_media(tx, library_root, media_id)?;
-            if collected {
-                info!("Garbage collected orphaned media after deleting file_id={}", file_id);
-            }
+        let collected = collect_orphaned_media(tx, library_root, file.media_id)?;
+        if collected {
+            info!("Garbage collected orphaned media after deleting file_id={}", file_id);
         }
     }
 
@@ -63,38 +61,36 @@ pub fn delete_file_by_id(tx: &Transaction, library_root: &Path, file_id: i64) ->
 
 /// Deletes a file by relative path and performs garbage collection on orphaned media.
 pub fn delete_file_by_rel_path(tx: &Transaction, library_root: &Path, rel_path: &str) -> AppResult<()> {
-    let deleted_file = db::files::delete_by_rel_path(tx, rel_path)?;
+    let deleted_file = db::media_links::delete_by_rel_path(tx, rel_path)?;
 
     if let Some(file) = deleted_file {
-        if let Some(media_id) = file.media_id {
-            let collected = collect_orphaned_media(tx, library_root, media_id)?;
-            if collected {
-                info!("Garbage collected orphaned media after deleting file at path={}", rel_path);
-            }
+        let collected = collect_orphaned_media(tx, library_root, file.media_id)?;
+        if collected {
+            info!("Garbage collected orphaned media after deleting file at path={}", rel_path);
         }
     }
 
     Ok(())
 }
 
-/// Removes deleted files from a specific directory subtree (dir_path LIKE `${dir_prefix}%`)
+/// Removes deleted media_links from a specific directory subtree (dir_path LIKE `${dir_prefix}%`)
 /// and performs garbage collection on orphaned media.
 ///
-/// Only files under the provided dir_prefix are considered for deletion. This prevents
-/// accidental removal of files from other projections (e.g., Sorted/ tag folders) when
+/// Only media_links under the provided dir_prefix are considered for deletion. This prevents
+/// accidental removal of media_links from other projections (e.g., Sorted/ tag folders) when
 /// reconciling Unsorted.
 ///
-/// Returns the number of files deleted under the scoped directory.
+/// Returns the number of media_links deleted under the scoped directory.
 pub fn remove_deleted_files_in_dir(
     tx: &Transaction,
     library_root: &Path,
     dir_prefix: &str,
     seen_rel_paths: &HashSet<String>,
 ) -> AppResult<usize> {
-    let deleted_count = db::files::remove_deleted_files_in_dir_like(tx, dir_prefix, seen_rel_paths)?;
+    let deleted_count = db::media_links::remove_deleted_files_in_dir_like(tx, dir_prefix, seen_rel_paths)?;
 
     if deleted_count > 0 {
-        info!("Removed {} files that no longer exist", deleted_count);
+        info!("Removed {} media_links that no longer exist", deleted_count);
     }
 
     let gc_count = collect_all_orphaned_media(tx, library_root)?;

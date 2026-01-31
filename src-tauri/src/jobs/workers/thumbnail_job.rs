@@ -8,13 +8,13 @@ use crate::core::error::{AppError, AppResult};
 use crate::core::time::now_ms;
 use crate::{db, filesystem};
 use crate::db::thumbnails;
-use crate::jobs::{JobEntry, JobStatus};
+use crate::jobs::{JobRow, JobStatus};
 use crate::media::MediaType;
 
 use std::sync::Arc;
 use crate::db::pool::DbManager;
 
-pub fn handle_thumbnail_job(db_manager: Arc<DbManager>, library_root: &Path, job: &JobEntry) -> AppResult<()> {
+pub fn handle_thumbnail_job(db_manager: Arc<DbManager>, library_root: &Path, job: &JobRow) -> AppResult<()> {
     let media_id = job.require_media_id()?;
     let media = {
         let mut conn = db_manager.get_connection(library_root)?;

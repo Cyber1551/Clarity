@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub struct JobMetrics {
     jobs_processed: AtomicU64,
     jobs_failed: AtomicU64,
-    hash_jobs_processed: AtomicU64,
     metadata_jobs_processed: AtomicU64,
     thumbnail_jobs_processed: AtomicU64,
 }
@@ -15,7 +14,6 @@ impl JobMetrics {
         Self {
             jobs_processed: AtomicU64::new(0),
             jobs_failed: AtomicU64::new(0),
-            hash_jobs_processed: AtomicU64::new(0),
             metadata_jobs_processed: AtomicU64::new(0),
             thumbnail_jobs_processed: AtomicU64::new(0),
         }
@@ -25,9 +23,6 @@ impl JobMetrics {
         self.jobs_processed.fetch_add(1, Ordering::Relaxed);
 
         match job_type {
-            crate::jobs::JobType::Hash => {
-                self.hash_jobs_processed.fetch_add(1, Ordering::Relaxed);
-            }
             crate::jobs::JobType::Metadata => {
                 self.metadata_jobs_processed.fetch_add(1, Ordering::Relaxed);
             }
@@ -49,10 +44,6 @@ impl JobMetrics {
         self.jobs_failed.load(Ordering::Relaxed)
     }
 
-    pub fn hash_jobs_processed(&self) -> u64 {
-        self.hash_jobs_processed.load(Ordering::Relaxed)
-    }
-
     pub fn metadata_jobs_processed(&self) -> u64 {
         self.metadata_jobs_processed.load(Ordering::Relaxed)
     }
@@ -64,9 +55,8 @@ impl JobMetrics {
     /// Returns a summary of all metrics.
     pub fn summary(&self) -> String {
         format!(
-            "Jobs: {} processed ({} hash, {} metadata, {} thumbnail), {} failed",
+            "Jobs: {} processed ({} metadata, {} thumbnail), {} failed",
             self.jobs_processed(),
-            self.hash_jobs_processed(),
             self.metadata_jobs_processed(),
             self.thumbnail_jobs_processed(),
             self.jobs_failed()
@@ -90,16 +80,15 @@ mod tests {
         let metrics = JobMetrics::new();
         assert_eq!(metrics.jobs_processed(), 0);
         assert_eq!(metrics.jobs_failed(), 0);
-        assert_eq!(metrics.hash_jobs_processed(), 0);
     }
 
     #[test]
     fn test_record_success() {
         let metrics = JobMetrics::new();
 
-        metrics.record_success(&JobType::Hash);
+        metrics.record_success(&JobType::Thumbnail);
         assert_eq!(metrics.jobs_processed(), 1);
-        assert_eq!(metrics.hash_jobs_processed(), 1);
+        assert_eq!(metrics.thumbnail_jobs_processed(), 1);
 
         metrics.record_success(&JobType::Metadata);
         assert_eq!(metrics.jobs_processed(), 2);
@@ -120,13 +109,13 @@ mod tests {
     #[test]
     fn test_summary() {
         let metrics = JobMetrics::new();
-        metrics.record_success(&JobType::Hash);
+        metrics.record_success(&JobType::Metadata);
         metrics.record_success(&JobType::Thumbnail);
         metrics.record_failure();
 
         let summary = metrics.summary();
         assert!(summary.contains("2 processed"));
-        assert!(summary.contains("1 hash"));
+        assert!(summary.contains("1 metadata"));
         assert!(summary.contains("1 thumbnail"));
         assert!(summary.contains("1 failed"));
     }

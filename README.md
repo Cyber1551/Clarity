@@ -60,6 +60,14 @@ Clarity operates in a two-phase process to ensure the UI remains snappy even wit
 
 ---
 
+## Documentation
+
+For a deeper dive into the technical architecture and core data structures, see the `docs/` directory:
+*   [Core Data Models](docs/models.md)
+*   [Ingestion Pipeline](docs/ingestion_pipeline.md)
+
+---
+
 ## Tech Stack
 
 *   **Backend**: [Rust](https://www.rust-lang.org/) & [Tauri 2](https://tauri.app/)

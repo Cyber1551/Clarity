@@ -1,27 +1,10 @@
-use rusqlite::{params, Connection, OptionalExtension, Row};
+use rusqlite::{params, Connection, OptionalExtension};
 use crate::core::error::AppResult;
 use crate::filesystem::meta::ProbedMetadata;
-use crate::media::{MediaEntry, MediaType};
-use crate::jobs::JobStatus;
+use crate::media::{MediaItem, MediaRow, MediaType};
 
-fn map_row_to_media_entry(row: &Row<'_>) -> rusqlite::Result<MediaEntry> {
-    Ok(MediaEntry {
-        id: row.get("id")?,
-        content_hash: row.get("content_hash")?,
-        media_type: row.get("media_type")?,
-        width: row.get("width")?,
-        height: row.get("height")?,
-        duration_ms: row.get("duration_ms")?,
-        hash_status: row.get("hash_status")?,
-        metadata_status: row.get("metadata_status")?,
-        thumbnail_status: row.get("thumbnail_status")?,
-        created_at: row.get("created_at")?,
-        updated_at: row.get("updated_at")?,
-    })
-}
-
-/// Retrieves a media entry by its ID.
-pub fn get_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<MediaEntry>> {
+/// Retrieves a media row by its ID.
+pub fn get_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<MediaRow>> {
     let existing = conn.query_row(r#"
         SELECT
             id,
@@ -30,20 +13,23 @@ pub fn get_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<MediaEntr
             width,
             height,
             duration_ms,
+            rating,
+            loved,
             hash_status,
             metadata_status,
             thumbnail_status,
+            reviewed_at,
             created_at,
             updated_at
         FROM media
         WHERE id = ?1
-    "#, params![media_id], map_row_to_media_entry).optional()?;
+    "#, params![media_id], MediaRow::from_row).optional()?;
 
     Ok(existing)
 }
 
-/// Retrieves a media entry by its content hash.
-pub fn get_by_content_hash(conn: &Connection, content_hash: &str) -> AppResult<Option<MediaEntry>> {
+/// Retrieves a media row by its content hash.
+pub fn get_by_content_hash(conn: &Connection, content_hash: &str) -> AppResult<Option<MediaRow>> {
     let existing = conn.query_row(r#"
         SELECT
             id,
@@ -52,19 +38,22 @@ pub fn get_by_content_hash(conn: &Connection, content_hash: &str) -> AppResult<O
             width,
             height,
             duration_ms,
+            rating,
+            loved,
             hash_status,
             metadata_status,
             thumbnail_status,
+            reviewed_at,
             created_at,
             updated_at
         FROM media
         WHERE content_hash = ?1
-    "#, params![content_hash], map_row_to_media_entry).optional()?;
+    "#, params![content_hash], MediaRow::from_row).optional()?;
 
     Ok(existing)
 }
 
-/// Marks a media entry as reviewed by setting reviewed_at timestamp.
+/// Marks a media row as reviewed by setting reviewed_at timestamp.
 pub fn mark_reviewed(conn: &Connection, media_id: i64, now: i64) -> AppResult<()> {
     conn.execute(
         r#"
@@ -78,10 +67,10 @@ pub fn mark_reviewed(conn: &Connection, media_id: i64, now: i64) -> AppResult<()
     Ok(())
 }
 
-/// Inserts a new media entry after computing a file's hash.
+/// Inserts a new media row after computing a file's hash.
 ///
 /// Sets hash_status to 'done' and other statuses to 'pending'.
-pub fn insert_for_hash(conn: &Connection, content_hash: &str, media_type: MediaType, now: i64) -> AppResult<MediaEntry> {
+pub fn insert_for_hash(conn: &Connection, content_hash: &str, media_type: MediaType, now: i64) -> AppResult<MediaRow> {
     let media_type_str = media_type.to_string();
 
     conn.execute(r#"
@@ -112,13 +101,13 @@ pub fn insert_for_hash(conn: &Connection, content_hash: &str, media_type: MediaT
     "#, params![content_hash, media_type_str, now])?;
 
     let new_media_id = conn.last_insert_rowid();
-    let media_entry = match get_by_id(conn, new_media_id) {
+    let media_row = match get_by_id(conn, new_media_id) {
         Ok(Some(media)) => media,
         Ok(None) => panic!("failed to find newly inserted media row"),
         Err(e) => return Err(e),
     };
 
-    Ok(media_entry)
+    Ok(media_row)
 }
 
 /// Updates a media entry with extracted metadata (dimensions, duration).
@@ -178,7 +167,7 @@ pub fn get_orphaned_media(conn: &Connection) -> AppResult<Vec<(i64, String)>> {
         SELECT m.id, m.content_hash
         FROM media m
         WHERE NOT EXISTS (
-            SELECT 1 FROM files f WHERE f.media_id = m.id
+            SELECT 1 FROM media_links f WHERE f.media_id = m.id
         )
     "#)?;
 
@@ -190,7 +179,7 @@ pub fn get_orphaned_media(conn: &Connection) -> AppResult<Vec<(i64, String)>> {
     Ok(orphaned_media)
 }
 
-/// Deletes a media row if no files reference it.
+/// Deletes a media row if no media_links reference it.
 ///
 /// Returns the content_hash if deleted, None otherwise.
 pub fn delete_unreferenced_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<String>> {
@@ -198,164 +187,48 @@ pub fn delete_unreferenced_by_id(conn: &Connection, media_id: i64) -> AppResult<
     // `RETURNING content_hash` gives us the hash if a row was deleted.
     let deleted_hash: Option<String> = conn.query_row(r#"
         DELETE FROM media
-        WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM files WHERE media_id = ?1)
+        WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM media_links WHERE media_id = ?1)
         RETURNING content_hash
     "#, params![media_id], |row| row.get(0)).optional()?;
 
     Ok(deleted_hash)
 }
 
-/// Represents a complete media item with file and thumbnail data for display purposes.
-#[derive(Debug, Clone)]
-pub struct MediaItemRow {
-    pub file_id: i64,
-    pub media_id: i64,
-    pub rel_path: String,
-    pub dir_path: String,
-    pub file_name: String,
-    pub ext: String,
-    pub media_type: MediaType,
-    pub width: Option<i32>,
-    pub height: Option<i32>,
-    pub duration_ms: Option<i64>,
-    pub hash_status: JobStatus,
-    pub metadata_status: JobStatus,
-    pub thumbnail_status: JobStatus,
-    pub content_hash: String,
-}
+// ===================== Media Items (Media + Path) =====================
 
-/// Retrieves all media items with their associated file metadata.
-///
-/// Joins files and media tables, ordered by file creation date (newest first).
-/// Only returns files that have been hashed and have an associated media entry.
-pub fn get_all_with_thumbnails(conn: &Connection) -> AppResult<Vec<MediaItemRow>> {
+pub fn get_media_items(conn: &Connection) -> AppResult<Vec<MediaItem>> {
     let mut stmt = conn.prepare(r#"
         SELECT
-            f.id as file_id,
-            f.media_id,
-            f.rel_path,
-            f.dir_path,
-            f.file_name,
-            f.ext,
-            m.media_type,
-            m.width,
-            m.height,
-            m.duration_ms,
-            m.hash_status,
-            m.metadata_status,
-            m.thumbnail_status,
-            m.content_hash
-        FROM files f
-        INNER JOIN media m ON f.media_id = m.id
-        ORDER BY f.created_at DESC
-    "#)?;
-
-    let rows = stmt.query_map(params![], |row| {
-        Ok(MediaItemRow {
-            file_id: row.get("file_id")?,
-            media_id: row.get("media_id")?,
-            rel_path: row.get("rel_path")?,
-            dir_path: row.get("dir_path")?,
-            file_name: row.get("file_name")?,
-            ext: row.get("ext")?,
-            media_type: row.get("media_type")?,
-            width: row.get("width")?,
-            height: row.get("height")?,
-            duration_ms: row.get("duration_ms")?,
-            hash_status: row.get("hash_status")?,
-            metadata_status: row.get("metadata_status")?,
-            thumbnail_status: row.get("thumbnail_status")?,
-            content_hash: row.get("content_hash")?,
-        })
-    })?;
-
-    let mut items = Vec::new();
-    for row in rows {
-        items.push(row?);
-    }
-
-    Ok(items)
-}
-
-// ===================== Media-level feed (one row per media) =====================
-
-#[derive(Debug, Clone)]
-pub struct MediaFeedRow {
-    pub media_id: i64,
-    pub media_type: MediaType,
-    pub width: Option<i32>,
-    pub height: Option<i32>,
-    pub duration_ms: Option<i64>,
-    pub hash_status: JobStatus,
-    pub metadata_status: JobStatus,
-    pub thumbnail_status: JobStatus,
-    pub content_hash: String,
-    pub reviewed_at: Option<i64>,
-    // representative file
-    pub rel_path: Option<String>,
-    pub dir_path: Option<String>,
-    pub file_name: Option<String>,
-    pub ext: Option<String>,
-    pub tags: Vec<crate::commands::media::TagDto>,
-}
-
-pub fn get_media_feed(conn: &Connection) -> AppResult<Vec<MediaFeedRow>> {
-    let mut stmt = conn.prepare(r#"
-        SELECT
-            m.id AS media_id,
-            m.media_type,
-            m.width,
-            m.height,
-            m.duration_ms,
-            m.hash_status,
-            m.metadata_status,
-            m.thumbnail_status,
+            m.id,
             m.content_hash,
+            m.media_type,
+            m.width,
+            m.height,
+            m.duration_ms,
+            m.rating,
+            m.loved,
+            m.hash_status,
+            m.metadata_status,
+            m.thumbnail_status,
             m.reviewed_at,
-            rf.rel_path AS rel_path,
-            rf.dir_path AS dir_path,
-            rf.file_name AS file_name,
-            rf.ext AS ext,
-            (
-                SELECT GROUP_CONCAT(tags.id || ':' || tags.name, '|')
-                FROM media_tags
-                JOIN tags ON tags.id = media_tags.tag_id
-                WHERE media_tags.media_id = m.id
-            ) AS tags_string
+            m.created_at,
+            m.updated_at,
+            rf.rel_path,
+            rf.dir_path,
+            rf.file_name,
+            rf.ext
         FROM media m
-        LEFT JOIN files rf ON rf.id = ( SELECT id FROM files WHERE media_id = m.id LIMIT 1 )
+        LEFT JOIN media_links rf ON rf.id = ( SELECT id FROM media_links WHERE media_id = m.id LIMIT 1 )
         ORDER BY m.created_at DESC
     "#)?;
 
     let rows = stmt.query_map(params![], |row| {
-        let tags_string: Option<String> = row.get("tags_string")?;
-        let tags = tags_string.map(|s| {
-            s.split('|')
-                .filter_map(|part| {
-                    let mut pieces = part.splitn(2, ':');
-                    let id = pieces.next()?.parse().ok()?;
-                    let name = pieces.next()?.to_string();
-                    Some(crate::commands::media::TagDto { id, name })
-                })
-                .collect()
-        }).unwrap_or_default();
-
-        Ok(MediaFeedRow {
-            media_id: row.get("media_id")?,
-            media_type: row.get("media_type")?,
-            width: row.get("width")?,
-            height: row.get("height")?,
-            duration_ms: row.get("duration_ms")?,
-            hash_status: row.get("hash_status")?,
-            metadata_status: row.get("metadata_status")?,
-            thumbnail_status: row.get("thumbnail_status")?,
-            content_hash: row.get("content_hash")?,
-            reviewed_at: row.get::<_, Option<i64>>("reviewed_at")?,
-            rel_path: row.get::<_, Option<String>>("rel_path")?,
-            dir_path: row.get::<_, Option<String>>("dir_path")?,
-            file_name: row.get::<_, Option<String>>("file_name")?,
-            ext: row.get::<_, Option<String>>("ext")?,
-            tags,
+        Ok(MediaItem {
+            media: MediaRow::from_row(row)?,
+            rel_path: row.get("rel_path")?,
+            dir_path: row.get("dir_path")?,
+            file_name: row.get("file_name")?,
+            ext: row.get("ext")?,
         })
     })?;
 

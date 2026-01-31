@@ -1,49 +1,14 @@
 use std::collections::HashSet;
 use std::path::Path;
-use rusqlite::{params, Connection, OptionalExtension, Row};
+use rusqlite::{params, Connection, OptionalExtension};
 use tracing::debug;
 use crate::filesystem;
+use crate::filesystem::meta;
 use crate::core::error::AppResult;
 use crate::core::time::now_ms;
-use crate::files::FileEntry;
-use crate::filesystem::meta;
+use crate::media_links::{MediaLinkRow, NewFileRecord, UpsertFileResult};
 
-#[derive(Debug)]
-pub struct NewFileRecord<'a> {
-    pub rel_path: &'a str,
-    pub dir_path: &'a String,
-    pub file_name: &'a String,
-    pub ext: &'a String,
-    pub size_bytes: i64,
-    pub mtime: i64,
-    pub now: i64,
-}
-
-#[derive(Debug, Clone)]
-pub struct UpsertFileResult {
-    pub file_entry: FileEntry,
-    pub is_new: bool,
-    pub mtime_changed: bool
-}
-
-fn map_row_to_file_entry(row: &Row<'_>) -> rusqlite::Result<FileEntry> {
-    Ok(FileEntry {
-        id: row.get(0)?,
-        media_id: row.get(1)?,
-        rel_path: row.get(2)?,
-        dir_path: row.get(3)?,
-        file_name: row.get(4)?,
-        ext: row.get(5)?,
-        size_bytes: row.get(6)?,
-        mtime: row.get(7)?,
-        last_seen_mtime: row.get(8)?,
-        is_reviewed: row.get::<_, i64>(9)? != 0,
-        created_at: row.get(10)?,
-        updated_at: row.get(11)?,
-    })
-}
-
-pub fn get_all(conn: &Connection) -> AppResult<Vec<FileEntry>> {
+pub fn get_all(conn: &Connection) -> AppResult<Vec<MediaLinkRow>> {
     let mut stmt = conn.prepare(r#"
         SELECT
             id,
@@ -58,12 +23,12 @@ pub fn get_all(conn: &Connection) -> AppResult<Vec<FileEntry>> {
             is_reviewed,
             created_at,
             updated_at
-        FROM files
+        FROM media_links
     "#)?;
 
-    let rows = stmt.query_map([], map_row_to_file_entry)?;
+    let rows = stmt.query_map([], MediaLinkRow::from_row)?;
 
-    let mut files = Vec::<FileEntry>::new();
+    let mut files = Vec::<MediaLinkRow>::new();
     for row in rows {
         files.push(row?);
     }
@@ -71,7 +36,7 @@ pub fn get_all(conn: &Connection) -> AppResult<Vec<FileEntry>> {
     Ok(files)
 }
 
-pub fn get_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<FileEntry>> {
+pub fn get_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<MediaLinkRow>> {
     let mut stmt = conn.prepare(r#"
         SELECT
             id,
@@ -86,15 +51,15 @@ pub fn get_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<Fi
             is_reviewed,
             created_at,
             updated_at
-        FROM files
+        FROM media_links
         WHERE rel_path = ?1
     "#)?;
 
-    let existing = stmt.query_row(params![rel_path], map_row_to_file_entry).optional()?;
+    let existing = stmt.query_row(params![rel_path], MediaLinkRow::from_row).optional()?;
     Ok(existing)
 }
 
-pub fn get_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<FileEntry>> {
+pub fn get_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<MediaLinkRow>> {
     let mut stmt = conn.prepare(r#"
         SELECT
             id,
@@ -109,16 +74,16 @@ pub fn get_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<FileEntry>
             is_reviewed,
             created_at,
             updated_at
-        FROM files
+        FROM media_links
         WHERE id = ?1
     "#)?;
 
-    let existing = stmt.query_row(params![file_id], map_row_to_file_entry).optional()?;
+    let existing = stmt.query_row(params![file_id], MediaLinkRow::from_row).optional()?;
     Ok(existing)
 }
 
-/// Lists all files rows for a given media_id.
-pub fn list_by_media_id(conn: &Connection, media_id: i64) -> AppResult<Vec<FileEntry>> {
+/// Lists all media_links rows for a given media_id.
+pub fn list_by_media_id(conn: &Connection, media_id: i64) -> AppResult<Vec<MediaLinkRow>> {
     let mut stmt = conn.prepare(r#"
         SELECT
             id,
@@ -133,18 +98,18 @@ pub fn list_by_media_id(conn: &Connection, media_id: i64) -> AppResult<Vec<FileE
             is_reviewed,
             created_at,
             updated_at
-        FROM files
+        FROM media_links
         WHERE media_id = ?1
     "#)?;
 
-    let rows = stmt.query_map(params![media_id], map_row_to_file_entry)?;
+    let rows = stmt.query_map(params![media_id], MediaLinkRow::from_row)?;
     let mut files = Vec::new();
     for r in rows { files.push(r?); }
     Ok(files)
 }
 
 /// Lists all file rows for a given media_id scoped to a directory path string.
-pub fn list_by_media_and_dir(conn: &Connection, media_id: i64, dir_path: &str) -> AppResult<Vec<FileEntry>> {
+pub fn list_by_media_and_dir(conn: &Connection, media_id: i64, dir_path: &str) -> AppResult<Vec<MediaLinkRow>> {
     let mut stmt = conn.prepare(r#"
         SELECT
             id,
@@ -159,18 +124,18 @@ pub fn list_by_media_and_dir(conn: &Connection, media_id: i64, dir_path: &str) -
             is_reviewed,
             created_at,
             updated_at
-        FROM files
+        FROM media_links
         WHERE media_id = ?1 AND dir_path = ?2
     "#)?;
 
-    let rows = stmt.query_map(params![media_id, dir_path], map_row_to_file_entry)?;
+    let rows = stmt.query_map(params![media_id, dir_path], MediaLinkRow::from_row)?;
     let mut files = Vec::new();
     for r in rows { files.push(r?); }
     Ok(files)
 }
 
 /// Lists all file rows for a given media_id where the directory path starts with a prefix (LIKE prefix%).
-pub fn list_by_media_in_dir_like(conn: &Connection, media_id: i64, dir_prefix: &str) -> AppResult<Vec<FileEntry>> {
+pub fn list_by_media_in_dir_like(conn: &Connection, media_id: i64, dir_prefix: &str) -> AppResult<Vec<MediaLinkRow>> {
     let like_pattern = format!("{}%", dir_prefix);
     let mut stmt = conn.prepare(r#"
         SELECT
@@ -186,11 +151,11 @@ pub fn list_by_media_in_dir_like(conn: &Connection, media_id: i64, dir_prefix: &
             is_reviewed,
             created_at,
             updated_at
-        FROM files
+        FROM media_links
         WHERE media_id = ?1 AND dir_path LIKE ?2
     "#)?;
 
-    let rows = stmt.query_map(params![media_id, like_pattern], map_row_to_file_entry)?;
+    let rows = stmt.query_map(params![media_id, like_pattern], MediaLinkRow::from_row)?;
     let mut files = Vec::new();
     for r in rows { files.push(r?); }
     Ok(files)
@@ -198,7 +163,7 @@ pub fn list_by_media_in_dir_like(conn: &Connection, media_id: i64, dir_prefix: &
 
 pub fn update_last_seen(conn: &Connection, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
     conn.execute(r#"
-        UPDATE files
+        UPDATE media_links
         SET last_seen_mtime = ?1,
             updated_at = ?2
         WHERE rel_path = ?3
@@ -208,7 +173,7 @@ pub fn update_last_seen(conn: &Connection, rel_path: &str, mtime: &i64, now: &i6
 
 pub fn update_media_id(conn: &Connection, file_id: i64, media_id: i64, now: i64) -> AppResult<()> {
     conn.execute(r#"
-        UPDATE files
+        UPDATE media_links
         SET media_id = ?1,
             updated_at = ?2
         WHERE id = ?3
@@ -218,9 +183,9 @@ pub fn update_media_id(conn: &Connection, file_id: i64, media_id: i64, now: i64)
 
 /// Inserts or updates a file record in the database.
 ///
-/// Updates existing files if mtime or size changed, creates new records otherwise.
+/// Updates existing media_links if mtime or size changed, creates new records otherwise.
 /// Returns flags indicating if the file is new or modified to help decide if jobs should be enqueued.
-pub fn upsert(conn: &Connection, rel_path: &str, full_path: &Path) -> AppResult<UpsertFileResult> {
+pub fn upsert(conn: &Connection, media_id: i64, rel_path: &str, full_path: &Path) -> AppResult<UpsertFileResult> {
     let now = now_ms();
     let size_bytes = meta::get_file_size(full_path)?;
     let mtime = meta::get_mtime(full_path)?;
@@ -230,15 +195,23 @@ pub fn upsert(conn: &Connection, rel_path: &str, full_path: &Path) -> AppResult<
     match existing {
         Some(mut entry) => {
             debug!("File exists in DB: {}", entry.rel_path);
-            let mtime_changed = entry.mtime != mtime || entry.size_bytes != size_bytes;
+            let mtime_changed = entry.mtime != mtime || entry.size_bytes != size_bytes || entry.media_id != media_id;
 
             if mtime_changed {
-                debug!("File changed: {} (old_mtime={}, new_mtime={}, old_size={}, new_size={})", rel_path, entry.mtime, mtime, entry.size_bytes, size_bytes);
-                update(conn, rel_path, &size_bytes, &mtime, &now)?;
+                debug!("File changed or media_id updated: {}", rel_path);
+                conn.execute(r#"
+                    UPDATE media_links
+                    SET media_id = ?1,
+                        size_bytes = ?2,
+                        mtime = ?3,
+                        last_seen_mtime = ?3,
+                        updated_at = ?4
+                    WHERE rel_path = ?5
+                "#, params![media_id, size_bytes, mtime, now, rel_path])?;
+                entry.media_id = media_id;
                 entry.size_bytes = size_bytes;
                 entry.mtime = mtime;
             } else {
-                // untouched but seen in this scan
                 update_last_seen(conn, rel_path, &mtime, &now)?;
             }
 
@@ -257,6 +230,7 @@ pub fn upsert(conn: &Connection, rel_path: &str, full_path: &Path) -> AppResult<
 
             // Insert a new file row
             let new_file = NewFileRecord {
+                media_id,
                 rel_path,
                 dir_path: &path_components.dir_path,
                 file_name: &path_components.file_name,
@@ -268,9 +242,9 @@ pub fn upsert(conn: &Connection, rel_path: &str, full_path: &Path) -> AppResult<
 
             let new_file_id = insert(conn, &new_file)?;
             debug!("Inserted new file with id={}", new_file_id);
-            let entry = FileEntry {
+            let entry = MediaLinkRow {
                 id: new_file_id,
-                media_id: None,
+                media_id,
                 rel_path: rel_path.to_string(),
                 dir_path: path_components.dir_path,
                 file_name: path_components.file_name,
@@ -292,25 +266,25 @@ pub fn upsert(conn: &Connection, rel_path: &str, full_path: &Path) -> AppResult<
     }
 }
 
-pub fn delete_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<FileEntry>> {
+pub fn delete_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<MediaLinkRow>> {
     let file_entry = get_by_id(conn, file_id)?;
-    conn.execute(r#"DELETE FROM files WHERE id = ?1"#, params![file_id])?; // AppError::Database
+    conn.execute(r#"DELETE FROM media_links WHERE id = ?1"#, params![file_id])?; // AppError::Database
     Ok(file_entry)
 }
 
-pub fn delete_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<FileEntry>> {
+pub fn delete_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<MediaLinkRow>> {
     let file_entry = get_by_rel_path(conn, rel_path)?;
-    conn.execute(r#"DELETE FROM files WHERE rel_path = ?1"#, params![rel_path])?; // AppError::Database
+    conn.execute(r#"DELETE FROM media_links WHERE rel_path = ?1"#, params![rel_path])?; // AppError::Database
     Ok(file_entry)
 }
 
-/// Sets the reviewed flag for all files that belong to a given media_id.
+/// Sets the reviewed flag for all media_links that belong to a given media_id.
 pub fn set_reviewed_for_media(conn: &Connection, media_id: i64, reviewed: bool) -> AppResult<usize> {
     let now = now_ms();
     let flag: i64 = if reviewed { 1 } else { 0 };
     let changed = conn.execute(
         r#"
-        UPDATE files
+        UPDATE media_links
         SET is_reviewed = ?1,
             updated_at = ?2
         WHERE media_id = ?3
@@ -320,26 +294,26 @@ pub fn set_reviewed_for_media(conn: &Connection, media_id: i64, reviewed: bool) 
     Ok(changed as usize)
 }
 
-/// Removes files from the database that are not in the seen set.
+/// Removes media_links from the database that are not in the seen set.
 ///
-/// Uses an efficient NOT IN query to delete all missing files in one operation.
-/// Returns the number of files deleted.
+/// Uses an efficient NOT IN query to delete all missing media_links in one operation.
+/// Returns the number of media_links deleted.
 pub fn remove_deleted_files(conn: &Connection, seen_rel_paths: &HashSet<String>) -> AppResult<usize> {
     let deleted_count = if seen_rel_paths.is_empty() {
-        conn.execute("DELETE FROM files", [])? // AppError::Database
+        conn.execute("DELETE FROM media_links", [])? // AppError::Database
     } else if seen_rel_paths.len() < 1000 {
         let placeholders = (0..seen_rel_paths.len())
             .map(|i| format!("?{}", i + 1))
             .collect::<Vec<_>>()
             .join(",");
 
-        let query = format!("DELETE FROM files WHERE rel_path NOT IN ({placeholders})");
+        let query = format!("DELETE FROM media_links WHERE rel_path NOT IN ({placeholders})");
         let rel_paths: Vec<&str> = seen_rel_paths.iter().map(|s| s.as_str()).collect();
         let params = rusqlite::params_from_iter(rel_paths);
 
         conn.execute(&query, params)? // AppError::Database
     } else {
-        let mut stmt = conn.prepare("SELECT id, rel_path FROM files")?; // AppError::Database
+        let mut stmt = conn.prepare("SELECT id, rel_path FROM media_links")?; // AppError::Database
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
         })?; // AppError::Database
@@ -354,7 +328,7 @@ pub fn remove_deleted_files(conn: &Connection, seen_rel_paths: &HashSet<String>)
 
         if !to_delete.is_empty() {
             let placeholders = to_delete.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let query = format!("DELETE FROM files WHERE id IN ({placeholders})");
+            let query = format!("DELETE FROM media_links WHERE id IN ({placeholders})");
             let params = rusqlite::params_from_iter(to_delete);
             conn.execute(&query, params)? // AppError::Database
         } else {
@@ -368,7 +342,7 @@ pub fn remove_deleted_files(conn: &Connection, seen_rel_paths: &HashSet<String>)
 /// Removes file rows under a directory subtree (dir_path LIKE `${dir_prefix}%`) that were not seen.
 ///
 /// This is a scoped variant used by directory-specific reconciliation (e.g., Unsorted)
-/// to avoid deleting files from other projections (like Sorted tags).
+/// to avoid deleting media_links from other projections (like Sorted tags).
 pub fn remove_deleted_files_in_dir_like(
     conn: &Connection,
     dir_prefix: &str,
@@ -378,7 +352,7 @@ pub fn remove_deleted_files_in_dir_like(
 
     // Strategy: list all candidate rows under the dir LIKE prefix, compute the set to delete,
     // then perform a single DELETE ... WHERE id IN (...)
-    let mut stmt = conn.prepare("SELECT id, rel_path FROM files WHERE dir_path LIKE ?1")?;
+    let mut stmt = conn.prepare("SELECT id, rel_path FROM media_links WHERE dir_path LIKE ?1")?;
     let rows = stmt.query_map(params![like_pattern], |row| {
         Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
     })?;
@@ -395,7 +369,7 @@ pub fn remove_deleted_files_in_dir_like(
         0
     } else {
         let placeholders = to_delete.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-        let query = format!("DELETE FROM files WHERE id IN ({})", placeholders);
+        let query = format!("DELETE FROM media_links WHERE id IN ({})", placeholders);
         let params = rusqlite::params_from_iter(to_delete);
         conn.execute(&query, params)?
     };
@@ -405,7 +379,7 @@ pub fn remove_deleted_files_in_dir_like(
 
 fn insert(conn: &Connection, new_file: &NewFileRecord) -> AppResult<i64> {
     conn.execute(r#"
-        INSERT INTO files (
+        INSERT INTO media_links (
             media_id,
             rel_path,
             dir_path,
@@ -418,13 +392,13 @@ fn insert(conn: &Connection, new_file: &NewFileRecord) -> AppResult<i64> {
             created_at,
             updated_at
         ) VALUES (
-            NULL,
-            ?1, ?2, ?3, ?4,
-            ?5, ?6, ?6,
+            ?1, ?2, ?3, ?4, ?5,
+            ?6, ?7, ?7,
             0,
-            ?7, ?7
+            ?8, ?8
         )
     "#, params![
+            new_file.media_id,
             new_file.rel_path,
             new_file.dir_path,
             new_file.file_name,
@@ -437,17 +411,4 @@ fn insert(conn: &Connection, new_file: &NewFileRecord) -> AppResult<i64> {
 
     let id = conn.last_insert_rowid();
     Ok(id)
-}
-
-fn update(conn: &Connection, rel_path: &str, size_bytes: &i64, mtime: &i64, now: &i64) -> AppResult<()> {
-    conn.execute(r#"
-        UPDATE files
-        SET
-            size_bytes = ?1,
-            mtime = ?2,
-            last_seen_mtime = ?2,
-            updated_at = ?3
-        WHERE rel_path = ?4
-    "#, params![size_bytes, mtime, now, rel_path])?; // AppError::Database
-    Ok(())
 }

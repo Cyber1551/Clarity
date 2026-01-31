@@ -1,12 +1,11 @@
-import { MediaFeedItem } from "@/types/mediaTypes";
-import { Box, Image, Spinner, Text, HStack, Badge } from "@chakra-ui/react";
+import { MediaItem } from "@/types/mediaTypes";
+import { Box, Image, Spinner, Text } from "@chakra-ui/react";
 import { useMediaStore } from "@/stores/mediaStore";
-import { Tooltip } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import { get_thumbnail } from "@/api/libraryApi";
 
 interface MediaCardProps {
-    item: MediaFeedItem;
+    item: MediaItem;
 }
 
 const MediaCard = ({ item }: MediaCardProps) => {
@@ -59,9 +58,6 @@ const MediaCard = ({ item }: MediaCardProps) => {
         item.metadataStatus === "error" ||
         item.thumbnailStatus === "error";
 
-    const displayTags = item.tags.slice(0, 2);
-    const remainingTags = item.tags.slice(2);
-
     return (
         <Box
             position="relative"
@@ -71,8 +67,7 @@ const MediaCard = ({ item }: MediaCardProps) => {
             cursor="pointer"
             bg="gray.100"
             _hover={{ 
-                bg: "gray.200",
-                "& .tag-overlay": { opacity: 1 }
+                bg: "gray.200"
             }}
             transition="background 0.2s"
             onClick={() => openViewer(item.mediaId)}
@@ -86,56 +81,6 @@ const MediaCard = ({ item }: MediaCardProps) => {
                 objectFit="cover"
                 fallback={<Box w="full" h="full" bg="gray.200" />}
             />
-
-            {/* Tag Overlay - Top right */}
-            {item.tags.length > 0 && (
-                <Box
-                    className="tag-overlay"
-                    position="absolute"
-                    top={2}
-                    right={2}
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="flex-end"
-                    gap={1}
-                    opacity={0.8}
-                    transition="opacity 0.2s"
-                >
-                    <HStack gap={1}>
-                        {displayTags.map(tag => (
-                            <Badge 
-                                key={tag.id} 
-                                variant="solid" 
-                                colorPalette="blue"
-                                size="sm"
-                                fontSize="2xs"
-                                px={1.5}
-                                borderRadius="full"
-                                textTransform="none"
-                            >
-                                {tag.name}
-                            </Badge>
-                        ))}
-                        {remainingTags.length > 0 && (
-                            <Tooltip 
-                                content={remainingTags.map(t => t.name).join(", ")}
-                                showArrow
-                            >
-                                <Badge 
-                                    variant="solid" 
-                                    colorPalette="gray"
-                                    size="sm"
-                                    fontSize="2xs"
-                                    px={1.5}
-                                    borderRadius="full"
-                                >
-                                    +{remainingTags.length}
-                                </Badge>
-                            </Tooltip>
-                        )}
-                    </HStack>
-                </Box>
-            )}
 
             {/* Processing overlay */}
             {isProcessing && (

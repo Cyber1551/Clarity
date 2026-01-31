@@ -122,7 +122,6 @@ fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: Arc<Jo
         info!("Claimed job: id={} type={:?} file_id={:?}", job.id, job.job_type, job.file_id);
 
         let result = match job.job_type {
-            JobType::Hash => workers::handle_hash_job(db_manager.clone(), &library_root, &job),
             JobType::Metadata => workers::handle_metadata_job(db_manager.clone(), &library_root, &job),
             JobType::Thumbnail => workers::handle_thumbnail_job(db_manager.clone(), &library_root, &job),
         };

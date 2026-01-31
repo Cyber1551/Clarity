@@ -56,7 +56,7 @@ impl DbConn {
 }
 
 pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
-    // `Media` table represents the content itself. Multiple files can point to the same media
+    // `Media` table represents the content itself. Multiple media_links can point to the same media
     conn.execute_batch(r#"
         CREATE TABLE IF NOT EXISTS media (
             id                  INTEGER PRIMARY KEY,
@@ -65,6 +65,8 @@ pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
             width               INTEGER,
             height              INTEGER,
             duration_ms         INTEGER,
+            rating              INTEGER NOT NULL DEFAULT 0,
+            loved               INTEGER NOT NULL DEFAULT 0,
             reviewed_at         INTEGER,
             hash_status         TEXT NOT NULL DEFAULT 'pending',
             metadata_status     TEXT NOT NULL DEFAULT 'pending',
@@ -73,18 +75,17 @@ pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
             updated_at          INTEGER NOT NULL
         );
 
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_media_content_hash ON media(content_hash);
         CREATE INDEX IF NOT EXISTS idx_media_created_at ON media(created_at);
         CREATE INDEX IF NOT EXISTS idx_media_hash_status ON media(hash_status) WHERE hash_status IN ('pending', 'error');
         CREATE INDEX IF NOT EXISTS idx_media_metadata_status ON media(metadata_status) WHERE metadata_status IN ('pending', 'error');
         CREATE INDEX IF NOT EXISTS idx_media_thumbnail_status ON media(thumbnail_status) WHERE thumbnail_status IN ('pending', 'error');
     "#)?; // AppError::Database
 
-    // `Files` table represent each physical file and hardlink on disk. Does not contain files in the .objects folder
+    // `media_links` table represent each hardlink file reference to a media item on disk. Does not contain media_links in the .objects folder
     conn.execute_batch(r#"
-        CREATE TABLE IF NOT EXISTS files (
+        CREATE TABLE IF NOT EXISTS media_links (
             id                  INTEGER PRIMARY KEY,
-            media_id            INTEGER REFERENCES media(id),
+            media_id            INTEGER NOT NULL REFERENCES media(id),
             rel_path            TEXT NOT NULL UNIQUE,
             dir_path            TEXT NOT NULL,
             file_name           TEXT NOT NULL,
@@ -97,18 +98,13 @@ pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
             updated_at          INTEGER NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS idx_files_media_id ON files(media_id);
-        CREATE INDEX IF NOT EXISTS idx_files_dir_path ON files(dir_path);
-        CREATE INDEX IF NOT EXISTS idx_files_ext ON files(ext);
-        -- Enforce at most one link per media per directory (ignore NULL media_id)
-        CREATE UNIQUE INDEX IF NOT EXISTS uniq_files_media_dir
-            ON files(media_id, dir_path)
-            WHERE media_id IS NOT NULL;
-        -- Enforce at most one Unsorted link across the entire Unsorted tree per media
-        -- Using a LIKE prefix on 'Unsorted%' so any path beginning with the Unsorted root is included
-        CREATE UNIQUE INDEX IF NOT EXISTS uniq_unsorted_media
-            ON files(media_id)
-            WHERE media_id IS NOT NULL AND dir_path LIKE 'Unsorted Media%';
+        CREATE INDEX IF NOT EXISTS idx_media_links_media_id ON media_links(media_id);
+        CREATE INDEX IF NOT EXISTS idx_media_links_dir_path ON media_links(dir_path);
+        CREATE INDEX IF NOT EXISTS idx_media_links_ext ON media_links(ext);
+        CREATE INDEX IF NOT EXISTS idx_media_links_created_at ON media_links(created_at);
+        -- Enforce at most one link per media per directory
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_media_links_media_dir
+            ON media_links(media_id, dir_path);
     "#)?; // AppError::Database
 
     // `Thumbnails` table hold all thumbnail data for each unique piece of media content.
@@ -143,27 +139,7 @@ pub fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
         CREATE INDEX IF NOT EXISTS idx_jobs_status_priority_created ON jobs(status, priority, created_at);
         CREATE INDEX IF NOT EXISTS idx_jobs_media_id ON jobs(media_id);
         CREATE INDEX IF NOT EXISTS idx_jobs_file_id ON jobs(file_id);
-    "#)?; // AppError::Database
-
-    // Tags (database-first) and media_tags (many-to-many)
-    conn.execute_batch(r#"
-        CREATE TABLE IF NOT EXISTS tags (
-            id          INTEGER PRIMARY KEY,
-            name        TEXT NOT NULL UNIQUE,
-            created_at  INTEGER NOT NULL,
-            updated_at  INTEGER NOT NULL
-        );
-
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
-
-        CREATE TABLE IF NOT EXISTS media_tags (
-            media_id    INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
-            tag_id      INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-            created_at  INTEGER NOT NULL,
-            PRIMARY KEY (media_id, tag_id)
-        );
-        CREATE INDEX IF NOT EXISTS idx_media_tags_media_id ON media_tags(media_id);
-        CREATE INDEX IF NOT EXISTS idx_media_tags_tag_id ON media_tags(tag_id);
+        CREATE INDEX IF NOT EXISTS idx_jobs_cleanup ON jobs(attempts, status);
     "#)?; // AppError::Database
 
     Ok(())

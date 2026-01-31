@@ -9,8 +9,6 @@ use crate::core::error::{AppError, AppResult};
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum JobType {
-    /// Compute blake3 hash and deduplicate to .objects directory
-    Hash,
     /// Extract media metadata (dimensions, duration)
     Metadata,
     /// Generate thumbnail
@@ -60,9 +58,9 @@ impl ToSql for JobStatus {
     }
 }
 
-/// A background job entry from the jobs table.
+/// A background job row from the jobs table.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct JobEntry {
+pub struct JobRow {
     pub id: i64,
     pub job_type: JobType,
     pub media_id: Option<i64>,
@@ -78,7 +76,24 @@ pub struct JobEntry {
     pub updated_at: i64,
 }
 
-impl JobEntry {
+impl JobRow {
+    pub fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            job_type: row.get("job_type")?,
+            media_id: row.get("media_id")?,
+            file_id: row.get("file_id")?,
+            rel_path: row.get("rel_path")?,
+            queued_mtime: row.get("queued_mtime")?,
+            priority: row.get("priority")?,
+            status: row.get("status")?,
+            attempts: row.get("attempts")?,
+            last_error: row.get("last_error")?,
+            created_at: row.get("created_at")?,
+            updated_at: row.get("updated_at")?,
+        })
+    }
+
     /// Returns the file_id or an error if it's None.
     pub fn require_file_id(&self) -> AppResult<i64> {
         self.file_id.ok_or_else(|| {
@@ -92,6 +107,15 @@ impl JobEntry {
             AppError::Other(format!("Job {} ({:?}) missing media_id", self.id, self.job_type))
         })
     }
+}
+
+/// Parameters for enqueueing a background job.
+pub struct EnqueueJobRequest {
+    pub file_id: i64,
+    pub media_id: Option<i64>,
+    pub rel_path: String,
+    /// Modification time at queue time, used to detect stale jobs
+    pub mtime: i64,
 }
 
 #[cfg(test)]
@@ -108,7 +132,6 @@ mod tests {
 
     #[test]
     fn test_job_type_display() {
-        assert_eq!(JobType::Hash.to_string(), "hash");
         assert_eq!(JobType::Metadata.to_string(), "metadata");
         assert_eq!(JobType::Thumbnail.to_string(), "thumbnail");
     }
@@ -123,9 +146,9 @@ mod tests {
 
     #[test]
     fn test_job_entry_require_file_id() {
-        let job = JobEntry {
+        let job = JobRow {
             id: 1,
-            job_type: JobType::Hash,
+            job_type: JobType::Metadata,
             media_id: None,
             file_id: Some(42),
             rel_path: None,
@@ -140,7 +163,7 @@ mod tests {
 
         assert_eq!(job.require_file_id().unwrap(), 42);
 
-        let job_without_file_id = JobEntry {
+        let job_without_file_id = JobRow {
             file_id: None,
             ..job
         };
@@ -150,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_job_entry_require_media_id() {
-        let job = JobEntry {
+        let job = JobRow {
             id: 1,
             job_type: JobType::Metadata,
             media_id: Some(99),
@@ -167,7 +190,7 @@ mod tests {
 
         assert_eq!(job.require_media_id().unwrap(), 99);
 
-        let job_without_media_id = JobEntry {
+        let job_without_media_id = JobRow {
             media_id: None,
             ..job
         };

@@ -44,10 +44,10 @@ impl ToSql for MediaType {
 
 /// Represents unique media content identified by content_hash.
 ///
-/// Multiple files can reference the same media entry (deduplication).
+/// Multiple media_links can reference the same media row (deduplication).
 /// Tracks processing status for hashing, metadata extraction, and thumbnail generation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MediaEntry {
+pub struct MediaRow {
     pub id: i64,
     /// Blake3 hash of the file content
     pub content_hash: String,
@@ -55,11 +55,46 @@ pub struct MediaEntry {
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub duration_ms: Option<i64>,
+    pub rating: i32,
+    pub loved: bool,
     pub hash_status: JobStatus,
     pub metadata_status: JobStatus,
     pub thumbnail_status: JobStatus,
+    pub reviewed_at: Option<i64>,
     pub created_at: i64,
     pub updated_at: i64,
+}
+
+impl MediaRow {
+    pub fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            content_hash: row.get("content_hash")?,
+            media_type: row.get("media_type")?,
+            width: row.get("width")?,
+            height: row.get("height")?,
+            duration_ms: row.get("duration_ms")?,
+            rating: row.get("rating")?,
+            loved: row.get::<_, i64>("loved")? != 0,
+            hash_status: row.get("hash_status")?,
+            metadata_status: row.get("metadata_status")?,
+            thumbnail_status: row.get("thumbnail_status")?,
+            reviewed_at: row.get("reviewed_at")?,
+            created_at: row.get("created_at")?,
+            updated_at: row.get("updated_at")?,
+        })
+    }
+}
+
+/// A domain object representing a piece of media along with its primary filesystem path.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediaItem {
+    pub media: MediaRow,
+    /// The representative path for this media item (from the media_links table)
+    pub rel_path: Option<String>,
+    pub dir_path: Option<String>,
+    pub file_name: Option<String>,
+    pub ext: Option<String>,
 }
 
 #[cfg(test)]

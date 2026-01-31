@@ -1,11 +1,11 @@
-import { MediaFeedItem } from "@/types/mediaTypes";
+import { MediaItem } from "@/types/mediaTypes";
 import { Box, Grid, Spinner, Text } from "@chakra-ui/react";
 import MediaCard from "./MediaCard";
 import { VirtuosoGrid } from "react-virtuoso";
 import { forwardRef } from "react";
 
 interface MediaGridProps {
-    items: MediaFeedItem[];
+    items: MediaItem[];
     isLoading: boolean;
     error: string | null;
 }
