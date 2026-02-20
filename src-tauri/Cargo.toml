@@ -12,17 +12,17 @@ rust-version = "1.60"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2.1.0", features = [] }
+tauri-build = { version = "2.5.5", features = [] }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "2.9.1", features = [ "protocol-asset"] }
+tauri = { version = "2.10.2", features = [ "protocol-asset"] }
 base64 = "0.22.1"
 rusqlite = { version = "0.38", features = ["bundled"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.32"
-blake3 = "1.8.2"
+blake3 = "1.8.3"
 walkdir = "2.5.0"
 tauri-plugin-shell = "2.3.3"
 tauri-plugin-opener = "2.5.3"
@@ -36,12 +36,12 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 rayon = "1.10"
-num_cpus = "1.16"
-tokio = "1.43.0"
-uuid = { version = "1.12.1", features = ["v4"] }
+num_cpus = "1.17"
+tokio = "1.49"
+uuid = { version = "1.21", features = ["v4"] }
 
 [dev-dependencies]
-tempfile = "3.13"
+tempfile = "3.25"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
