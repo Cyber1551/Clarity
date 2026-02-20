@@ -8,3 +8,7 @@ export async function getAppConfig(): Promise<AppConfig> {
 export async function chooseLibraryRoot(): Promise<string | null> {
     return await invoke<string | null>("choose_library_root");
 }
+
+export async function openLibraryRoot(): Promise<void> {
+    await invoke("open_library_root");
+}

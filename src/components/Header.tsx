@@ -1,8 +1,10 @@
 import React from 'react';
 import { Button, Flex, HStack, IconButton, Tabs, Text } from "@chakra-ui/react";
-import { LuSearch, LuSettings, LuPlus } from "react-icons/lu";
+import { LuSearch, LuSettings, LuPlus, LuFolderOpen } from "react-icons/lu";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
+import { useConfigStore } from "@/stores/configStore.ts";
 import { import_files } from "@/api/importApi";
+import { openLibraryRoot } from "@/api/configApi";
 
 interface HeaderProps {
     folderPath: string | null;
@@ -14,6 +16,7 @@ const Header: React.FC<HeaderProps> = () => {
     const setSettingsDialogOpen = useInterfaceStore(s => s.setSettingsDialogOpen);
     const setActiveTab = useInterfaceStore(s => s.setActiveTab);
     const setSelectedImportFolder = useInterfaceStore(s => s.setSelectedImportFolder);
+    const libraryRoot = useConfigStore(s => s.config?.libraryRoot);
 
     const handleImport = async () => {
         try {
@@ -24,6 +27,16 @@ const Header: React.FC<HeaderProps> = () => {
             }
         } catch (e) {
             console.error("Import failed", e);
+        }
+    };
+
+    const handleOpenLibraryRoot = async () => {
+        if (!libraryRoot) return;
+
+        try {
+            await openLibraryRoot();
+        } catch (e) {
+            console.error("Failed to open library folder", e);
         }
     };
 
@@ -72,6 +85,16 @@ const Header: React.FC<HeaderProps> = () => {
                 
                 <IconButton aria-label="Search" variant="ghost" rounded="full">
                     <LuSearch />
+                </IconButton>
+
+                <IconButton
+                    aria-label="Open Library Folder"
+                    variant="ghost"
+                    rounded="full"
+                    disabled={!libraryRoot}
+                    onClick={handleOpenLibraryRoot}
+                >
+                    <LuFolderOpen />
                 </IconButton>
 
                 <IconButton aria-label="Settings" variant="ghost" rounded="full"

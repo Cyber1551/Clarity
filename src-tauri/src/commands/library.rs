@@ -6,6 +6,7 @@ use crate::filesystem::directory;
 use crate::jobs::runner::JobWorkerManager;
 use crate::db::pool::DbManager;
 use crate::core::state::LibraryRootState;
+use tauri_plugin_opener::OpenerExt;
 
 use std::sync::Arc;
 
@@ -59,6 +60,16 @@ pub async fn initialize_library(app: tauri::AppHandle) -> Result<(), String>  {
     directory::ensure_core_dirs(&root).map_err(|e: AppError| e.report())?;
 
     let _ = app.emit("library-initialized", ());
+
+    Ok(())
+}
+
+/// Opens the library root in the system default file explorer.
+#[tauri::command]
+pub fn open_library_root(app: tauri::AppHandle) -> Result<(), String> {
+    let root = config::get_library_root(&app).map_err(|e: AppError| e.report())?;
+
+    app.opener().open_path(root.to_string_lossy(), None::<&str>).map_err(|e| e.to_string())?;
 
     Ok(())
 }

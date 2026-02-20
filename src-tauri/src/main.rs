@@ -51,11 +51,13 @@ fn main() {
         })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             library::get_app_config,
             library::choose_library_root,
             library::initialize_library,
+            library::open_library_root,
             media::get_media_items,
             media::get_media_detail,
             media::get_thumbnail,
