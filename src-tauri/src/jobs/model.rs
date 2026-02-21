@@ -109,6 +109,16 @@ impl JobRow {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobCompletedPayload {
+    pub job_type: JobType,
+    pub media_id: Option<i64>,
+    pub file_id: Option<i64>,
+    pub rel_path: Option<String>,
+    pub status: JobStatus,
+}
+
 /// Parameters for enqueueing a background job.
 pub struct EnqueueJobRequest {
     pub file_id: i64,

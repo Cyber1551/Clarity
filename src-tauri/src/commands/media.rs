@@ -78,3 +78,19 @@ pub fn get_thumbnail(_app: tauri::AppHandle, db_manager: State<'_, Arc<DbManager
         }
     }
 }
+
+#[tauri::command]
+pub fn get_media_item_by_rel_path(
+    _app: tauri::AppHandle,
+    db_manager: State<'_, Arc<DbManager>>,
+    library_root_state: State<'_, Arc<LibraryRootState>>,
+    rel_path: String,
+) -> Result<Option<MediaItemDto>, String> {
+    let root_lock = library_root_state.0.lock().unwrap();
+    let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?;
+
+    let conn = db_manager.get_connection(root).map_err(|e: AppError| e.report())?;
+    let item = db::media::get_media_item_by_rel_path(&conn, &rel_path).map_err(|e: AppError| e.report())?;
+
+    Ok(item.map(MediaItemDto::from))
+}

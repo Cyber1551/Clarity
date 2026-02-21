@@ -16,14 +16,18 @@ const Header: React.FC<HeaderProps> = () => {
     const setSettingsDialogOpen = useInterfaceStore(s => s.setSettingsDialogOpen);
     const setActiveTab = useInterfaceStore(s => s.setActiveTab);
     const setSelectedImportFolder = useInterfaceStore(s => s.setSelectedImportFolder);
+    const setLastImportResult = useInterfaceStore(s => s.setLastImportResult);
     const libraryRoot = useConfigStore(s => s.config?.libraryRoot);
 
     const handleImport = async () => {
         try {
-            const folderName = await import_files();
-            if (folderName) {
-                setSelectedImportFolder(folderName);
+            const result = await import_files();
+            if (result?.folderName) {
+                setSelectedImportFolder(result.folderName);
                 setActiveTab("imports");
+            }
+            if (result) {
+                setLastImportResult(result);
             }
         } catch (e) {
             console.error("Import failed", e);

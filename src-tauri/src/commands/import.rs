@@ -10,21 +10,21 @@ use crate::db;
 use crate::media::MediaType;
 use crate::jobs::{JobType, EnqueueJobRequest};
 use crate::core::time::now_ms;
-use super::dto::MediaItemDto;
+use super::dto::{ImportResultDto, ImportSkippedItemDto, MediaItemDto};
 
 #[tauri::command]
 pub async fn import_files(
     app: AppHandle,
     db_manager: State<'_, Arc<DbManager>>,
     library_root_state: State<'_, Arc<LibraryRootState>>,
-) -> Result<String, String> {
+) -> Result<Option<ImportResultDto>, String> {
     let root_lock = library_root_state.0.lock().unwrap();
     let root = root_lock.as_ref().ok_or_else(|| "Library root not set".to_string())?.clone();
     drop(root_lock);
 
     let files = app.dialog().file().blocking_pick_files();
     let Some(file_paths) = files else {
-        return Ok("".to_string());
+        return Ok(None);
     };
 
     let date_str = Local::now().format("%Y-%m-%d").to_string();
@@ -34,13 +34,15 @@ pub async fn import_files(
     std::fs::create_dir_all(&import_dir_abs).map_err(|e| e.to_string())?;
 
     let conn = db_manager.get_connection(&root).map_err(|e| e.report())?;
+    let mut imported_count: usize = 0;
+    let mut skipped_items: Vec<ImportSkippedItemDto> = Vec::new();
 
     for src_path_buf in file_paths {
         let src_path = src_path_buf.as_path().ok_or("Invalid source path")?;
-        let file_name = src_path.file_name().ok_or("Invalid file name")?.to_string_lossy();
+        let file_name = src_path.file_name().ok_or("Invalid file name")?.to_string_lossy().to_string();
         let ext = src_path.extension().and_then(|e| e.to_str()).unwrap_or("");
         
-        let dest_path_abs = import_dir_abs.join(file_name.as_ref());
+        let dest_path_abs = import_dir_abs.join(file_name.as_str());
         let dest_path_rel = format!("{}/{}", import_dir_rel, file_name);
 
         // 1. Compute hash at original source
@@ -51,7 +53,32 @@ pub async fn import_files(
 
         // 2. Database Identity
         let media = match db::media::get_by_content_hash(&conn, &content_hash).map_err(|e| e.report())? {
-            Some(m) => m,
+            Some(m) => {
+                let existing_links = db::media_links::list_by_media_id(&conn, m.id).map_err(|e| e.report())?;
+                if !existing_links.is_empty() {
+                    let import_prefix = format!("{}/", IMPORTS_DIRECTORY);
+                    let mut import_links = db::media_links::list_by_media_in_dir_like(&conn, m.id, &import_prefix).map_err(|e| e.report())?;
+                    import_links.sort_by_key(|link| link.created_at);
+                    let original = import_links.first();
+                    let original_import_folder = original
+                        .and_then(|link| link.dir_path.strip_prefix(&import_prefix).map(|s| s.to_string()));
+                    let original_rel_path = original.map(|link| link.rel_path.clone());
+                    let existing_link = original.or_else(|| existing_links.first());
+
+                    skipped_items.push(ImportSkippedItemDto {
+                        media_id: m.id,
+                        content_hash: m.content_hash.clone(),
+                        file_name: file_name.clone(),
+                        original_import_folder,
+                        original_rel_path,
+                        existing_dir_path: existing_link.map(|link| link.dir_path.clone()),
+                        existing_rel_path: existing_link.map(|link| link.rel_path.clone()),
+                    });
+                    continue;
+                }
+
+                m
+            }
             None => db::media::insert_for_hash(&conn, &content_hash, media_type, now).map_err(|e| e.report())?,
         };
 
@@ -72,10 +99,17 @@ pub async fn import_files(
             db::jobs::enqueue(&conn, JobType::Metadata, &req).map_err(|e| e.report())?;
             db::jobs::enqueue(&conn, JobType::Thumbnail, &req).map_err(|e| e.report())?;
         }
+
+        imported_count += 1;
     }
 
     let _ = app.emit("library-changed", ());
-    Ok(date_str)
+    Ok(Some(ImportResultDto {
+        folder_name: date_str,
+        imported_count,
+        skipped_count: skipped_items.len(),
+        skipped_items,
+    }))
 }
 
 #[tauri::command]

@@ -286,3 +286,44 @@ pub fn get_media_items_in_dir(conn: &Connection, dir_path: &str) -> AppResult<Ve
     for row in rows { items.push(row?); }
     Ok(items)
 }
+
+pub fn get_media_item_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<MediaItem>> {
+    let mut stmt = conn.prepare(r#"
+        SELECT
+            m.id,
+            m.content_hash,
+            m.media_type,
+            m.width,
+            m.height,
+            m.duration_ms,
+            m.quality_rating,
+            m.favorite_rating,
+            m.loved,
+            m.hash_status,
+            m.metadata_status,
+            m.thumbnail_status,
+            m.reviewed_at,
+            m.created_at,
+            m.updated_at,
+            rf.rel_path,
+            rf.dir_path,
+            rf.file_name,
+            rf.ext
+        FROM media m
+        INNER JOIN media_links rf ON rf.media_id = m.id
+        WHERE rf.rel_path = ?1
+        LIMIT 1
+    "#)?;
+
+    let item = stmt.query_row(params![rel_path], |row| {
+        Ok(MediaItem {
+            media: MediaRow::from_row(row)?,
+            rel_path: row.get("rel_path")?,
+            dir_path: row.get("dir_path")?,
+            file_name: row.get("file_name")?,
+            ext: row.get("ext")?,
+        })
+    }).optional()?;
+
+    Ok(item)
+}

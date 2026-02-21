@@ -59,6 +59,7 @@ fn main() {
             library::initialize_library,
             library::open_library_root,
             media::get_media_items,
+            media::get_media_item_by_rel_path,
             media::get_media_detail,
             media::get_thumbnail,
             import::import_files,

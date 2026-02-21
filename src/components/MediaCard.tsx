@@ -1,8 +1,9 @@
 import { MediaItem } from "@/types/mediaTypes";
 import { Box, Image, Spinner, Text } from "@chakra-ui/react";
 import { useMediaStore } from "@/stores/mediaStore";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { get_thumbnail } from "@/api/libraryApi";
+import { keyframes } from "@emotion/react";
 
 interface MediaCardProps {
     item: MediaItem;
@@ -10,6 +11,7 @@ interface MediaCardProps {
 
 const MediaCard = ({ item }: MediaCardProps) => {
     const openViewer = useMediaStore(s => s.openViewer);
+    const highlightedMediaId = useMediaStore(s => s.highlightedMediaId);
     const [thumbUrl, setThumbUrl] = useState<string | null>(null);
 
     useEffect(() => {
@@ -21,7 +23,7 @@ const MediaCard = ({ item }: MediaCardProps) => {
                 const { blob, mimetype } = await get_thumbnail(item.contentHash);
                 if (!active) return;
                 
-                const newUrl = URL.createObjectURL(new Blob([blob as any], { type: mimetype }));
+                const newUrl = URL.createObjectURL(new Blob([blob] as BlobPart[], { type: mimetype }));
                 if (!active) {
                     URL.revokeObjectURL(newUrl);
                     return;
@@ -44,6 +46,13 @@ const MediaCard = ({ item }: MediaCardProps) => {
             }
         };
     }, [item.contentHash, item.thumbnailStatus]);
+
+    const isHighlighted = highlightedMediaId === item.mediaId;
+    const pulse = useMemo(() => keyframes`
+        0% { box-shadow: 0 0 0 0 rgba(66, 153, 225, 0.9); }
+        70% { box-shadow: 0 0 0 10px rgba(66, 153, 225, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(66, 153, 225, 0); }
+    `, []);
 
     const isProcessing =
         item.hashStatus === "pending" ||
@@ -70,11 +79,14 @@ const MediaCard = ({ item }: MediaCardProps) => {
                 bg: "gray.200"
             }}
             transition="background 0.2s"
+            outline={isHighlighted ? "2px solid" : "none"}
+            outlineColor={isHighlighted ? "blue.400" : "transparent"}
+            animation={isHighlighted ? `${pulse} 1.6s ease-out infinite` : "none"}
             onClick={() => openViewer(item.mediaId)}
         >
             {/* Thumbnail image */}
             <Image
-                src={thumbUrl ?? ""}
+                src={thumbUrl ?? undefined}
                 alt={item.fileName ?? item.contentHash}
                 w="full"
                 h="full"

@@ -103,3 +103,24 @@ impl From<ThumbnailRow> for ThumbnailDto {
         }
     }
 }
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportSkippedItemDto {
+    pub media_id: i64,
+    pub content_hash: String,
+    pub file_name: String,
+    pub original_import_folder: Option<String>,
+    pub original_rel_path: Option<String>,
+    pub existing_dir_path: Option<String>,
+    pub existing_rel_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportResultDto {
+    pub folder_name: String,
+    pub imported_count: usize,
+    pub skipped_count: usize,
+    pub skipped_items: Vec<ImportSkippedItemDto>,
+}

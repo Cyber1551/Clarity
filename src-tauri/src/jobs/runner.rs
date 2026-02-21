@@ -6,7 +6,7 @@ use tracing::{info, debug, error};
 use crate::core::constants::{MAX_THREADS, WORKER_THREAD_SLEEP_DURATION};
 use crate::core::error::AppResult;
 use crate::db;
-use crate::jobs::{workers, JobType};
+use crate::jobs::{workers, JobType, JobCompletedPayload, JobStatus};
 use crate::jobs::metrics::JobMetrics;
 
 use crate::db::pool::DbManager;
@@ -136,7 +136,16 @@ async fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: 
                 info!("Job completed successfully: id={} type={:?}", job.id, job.job_type);
 
                 if let Ok(hg) = app_handle.lock() {
-                    if let Some(ref a) = *hg { let _ = a.emit("job-completed", ()); }
+                    if let Some(ref a) = *hg {
+                        let payload = JobCompletedPayload {
+                            job_type: job.job_type,
+                            media_id: job.media_id,
+                            file_id: job.file_id,
+                            rel_path: job.rel_path.clone(),
+                            status: JobStatus::Done,
+                        };
+                        let _ = a.emit("job-completed", payload);
+                    }
                 }
             }
             Err(e) => {
@@ -153,7 +162,16 @@ async fn worker_loop(library_root: PathBuf, shutdown: Arc<AtomicBool>, metrics: 
 
                 // Emit event to frontend (even on error, so UI can update)
                 if let Ok(hg) = app_handle.lock() {
-                    if let Some(ref a) = *hg { let _ = a.emit("job-completed", ()); }
+                    if let Some(ref a) = *hg {
+                        let payload = JobCompletedPayload {
+                            job_type: job.job_type,
+                            media_id: job.media_id,
+                            file_id: job.file_id,
+                            rel_path: job.rel_path.clone(),
+                            status: JobStatus::Error,
+                        };
+                        let _ = a.emit("job-completed", payload);
+                    }
                 }
             }
         }
