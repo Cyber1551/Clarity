@@ -1,9 +1,10 @@
 import { MediaItem } from "@/types/mediaTypes";
 import { Box, Image, Spinner, Text } from "@chakra-ui/react";
 import { useMediaStore } from "@/stores/mediaStore";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { get_thumbnail } from "@/api/libraryApi";
 import { keyframes } from "@emotion/react";
+import { useObjectUrlFromBlob } from "@/hooks/useObjectUrlFromBlob.tsx";
 
 interface MediaCardProps {
     item: MediaItem;
@@ -12,40 +13,15 @@ interface MediaCardProps {
 const MediaCard = ({ item }: MediaCardProps) => {
     const openViewer = useMediaStore(s => s.openViewer);
     const highlightedMediaId = useMediaStore(s => s.highlightedMediaId);
-    const [thumbUrl, setThumbUrl] = useState<string | null>(null);
 
-    useEffect(() => {
-        let active = true;
-        let objectUrl: string | null = null;
-
-        async function loadThumb() {
-            try {
-                const { blob, mimetype } = await get_thumbnail(item.contentHash);
-                if (!active) return;
-                
-                const newUrl = URL.createObjectURL(new Blob([blob] as BlobPart[], { type: mimetype }));
-                if (!active) {
-                    URL.revokeObjectURL(newUrl);
-                    return;
-                }
-                objectUrl = newUrl;
-                setThumbUrl(objectUrl);
-            } catch (e) {
-                console.error("Failed to load thumbnail", e);
-            }
+    const thumbUrl = useObjectUrlFromBlob(
+        () => get_thumbnail(item.contentHash),
+        [item.contentHash, item.thumbnailStatus],
+        {
+            enabled: item.thumbnailStatus === "done",
+            onError: (e) => console.error("Failed to load thumbnail", e),
         }
-
-        if (item.thumbnailStatus === "done") {
-            void loadThumb();
-        }
-
-        return () => {
-            active = false;
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
-            }
-        };
-    }, [item.contentHash, item.thumbnailStatus]);
+    );
 
     const isHighlighted = highlightedMediaId === item.mediaId;
     const pulse = useMemo(() => keyframes`

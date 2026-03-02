@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { ImportSkippedItem } from "@/types/importTypes.ts";
 import { get_thumbnail } from "@/api/libraryApi.ts";
 import { Box, Button, HStack, VStack, Text, Image } from "@chakra-ui/react";
+import { useObjectUrlFromBlob } from "@/hooks/useObjectUrlFromBlob.tsx";
 
 export interface ImportsDuplicateRowProps {
     item: ImportSkippedItem;
@@ -9,37 +9,13 @@ export interface ImportsDuplicateRowProps {
 }
 
 const ImportsDuplicateRow = ({ item, onJump, }: ImportsDuplicateRowProps) => {
-    const [thumbUrl, setThumbUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        let active = true;
-        let objectUrl: string | null = null;
-
-        async function loadThumb() {
-            try {
-                const { blob, mimetype } = await get_thumbnail(item.contentHash);
-                if (!active) return;
-                const newUrl = URL.createObjectURL(new Blob([blob] as BlobPart[], { type: mimetype }));
-                if (!active) {
-                    URL.revokeObjectURL(newUrl);
-                    return;
-                }
-                objectUrl = newUrl;
-                setThumbUrl(objectUrl);
-            } catch (e) {
-                console.error("Failed to load thumbnail", e);
-            }
+    const thumbUrl = useObjectUrlFromBlob(
+        () => get_thumbnail(item.contentHash),
+        [item.contentHash],
+        {
+            onError: (e) => console.error("Failed to load thumbnail", e),
         }
-
-        void loadThumb();
-
-        return () => {
-            active = false;
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
-            }
-        };
-    }, [item.contentHash]);
+    );
 
     const location = item.existingDirPath ?? item.originalImportFolder ?? "Library";
 

@@ -51,7 +51,7 @@ pub async fn choose_library_root(app: tauri::AppHandle, job_worker_manager: Stat
     Ok(Some(folder_str))
 }
 
-/// Initializes the library.
+/// Initializes the library directory structure.
 /// - Ok(()) on success. Idempotent.
 /// - Err(String) on error
 #[tauri::command]

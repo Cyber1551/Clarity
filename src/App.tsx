@@ -40,7 +40,7 @@ const App = () => {
 
     useEffect(() => {
         if (config?.libraryRoot) {
-            // Initialize library (scan files and enqueue jobs)
+            // Initialize library directory structure
             setIsLoading(true);
             void initialize_library();
         }
@@ -89,13 +89,11 @@ const App = () => {
                 flexDirection="column"
                 h="100vh"
             >
-                {/* Header with app title, folder selection, and cache status */}
                 <Header
                     folderPath={""}
                     cacheActionText={{}}
                     onPickFolder={() => Promise.resolve()}
                 />
-                {/* Main content area that should fill the remaining space */}
                 <MainContent />
             </Tabs.Root>
             <Viewer />
