@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("SQLite error: {0}")]
     Database(#[from] rusqlite::Error),
 
+    #[error("Migration error: {0}")]
+    Refinery(#[from] refinery::Error),
+
     #[error("Image error: {0}")]
     ImageError(#[from] image::ImageError),
 

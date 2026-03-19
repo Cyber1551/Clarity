@@ -19,9 +19,9 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "2.10.2", features = [ "protocol-asset"] }
 base64 = "0.22.1"
-rusqlite = { version = "0.38", features = ["bundled"] }
+rusqlite = { version = "0.37.0", features = ["bundled"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.32"
+r2d2_sqlite = "0.31.0"
 blake3 = "1.8.3"
 walkdir = "2.5.0"
 tauri-plugin-shell = "2.3.3"
@@ -31,7 +31,7 @@ tauri-plugin-fs = "2.4.5"
 thiserror = "2.0.17"
 chrono = "0.4"
 notify = "8.2.0"
-strum = { version = "0.27.2", features = ["derive"] }
+strum = { version = "0.28.0", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -39,6 +39,7 @@ rayon = "1.10"
 num_cpus = "1.17"
 tokio = "1.49"
 uuid = { version = "1.21", features = ["v4"] }
+refinery = { version = "0.9.0", features = ["rusqlite"] }
 
 [dev-dependencies]
 tempfile = "3.25"

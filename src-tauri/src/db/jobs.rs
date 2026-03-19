@@ -140,8 +140,8 @@ mod tests {
 
     #[test]
     fn test_enqueue_and_claim() -> AppResult<()> {
-        let conn = Connection::open_in_memory()?;
-        initialize_schema(&conn).map_err(|e| crate::core::error::AppError::Database(e))?;
+        let mut conn = Connection::open_in_memory()?;
+        initialize_schema(&mut conn)?;
 
         // Disable foreign keys for this test to avoid needing to populate media/media_links tables
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
@@ -169,8 +169,8 @@ mod tests {
 
     #[test]
     fn test_job_error_and_retry() -> AppResult<()> {
-        let conn = Connection::open_in_memory()?;
-        initialize_schema(&conn).map_err(|e| crate::core::error::AppError::Database(e))?;
+        let mut conn = Connection::open_in_memory()?;
+        initialize_schema(&mut conn)?;
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
 
         let req = EnqueueJobRequest {
@@ -194,8 +194,8 @@ mod tests {
 
     #[test]
     fn test_job_max_attempts_cleanup() -> AppResult<()> {
-        let conn = Connection::open_in_memory()?;
-        initialize_schema(&conn).map_err(|e| crate::core::error::AppError::Database(e))?;
+        let mut conn = Connection::open_in_memory()?;
+        initialize_schema(&mut conn)?;
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
 
         let req = EnqueueJobRequest {
