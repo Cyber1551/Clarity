@@ -44,10 +44,13 @@ const MediaGrid = ({ items, isLoading, error, scrollToMediaId, onScrolledToMedia
 
     useEffect(() => {
         if (!scrollToMediaId || isLoading) return;
+        
         const index = indexMap.get(scrollToMediaId);
         if (index === undefined) return;
+        
         const handle = virtuosoRef.current;
         if (!handle) return;
+        
         const scroll = () => handle.scrollToIndex({ index, align: "center", behavior: "smooth" });
         const raf = requestAnimationFrame(scroll);
         const retry = setTimeout(scroll, 80);

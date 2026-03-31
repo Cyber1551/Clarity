@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::time::Duration;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use crate::core::error::{AppResult, AppError};
@@ -26,24 +27,24 @@ impl DbManager {
             }
         }
 
-        // Initialize a new db pool
         let db_file = library_root.join(crate::core::constants::DB_NAME);
         let manager = SqliteConnectionManager::file(db_file)
             .with_init(|conn| {
-                // Configure the connection
-                conn.pragma_update(None, "journal_mode", &"WAL")?;
-                conn.pragma_update(None, "synchronous", &"NORMAL")?;
-                conn.pragma_update(None, "temp_store", &"MEMORY")?;
-                conn.pragma_update(None, "foreign_keys", &"ON")?;
+                conn.pragma_update(None, "busy_timeout", 5000)?;
+                conn.pragma_update(None, "journal_mode", "WAL")?;
+                conn.pragma_update(None, "synchronous", "NORMAL")?;
+                conn.pragma_update(None, "temp_store", "MEMORY")?;
+                conn.pragma_update(None, "foreign_keys", "ON")?;
                 Ok(())
             });
 
         let pool = Pool::builder()
-            .max_size((num_cpus::get() as u32 * 2).max(20))
+            .max_size(4)
+            .min_idle(Some(1))
+            .connection_timeout(Duration::from_secs(10))
             .build(manager)
             .map_err(|e| AppError::Other(e.to_string()))?;
 
-        // Initialize schema and migrations EXACTLY ONCE
         {
             let mut conn = pool.get().map_err(|e| AppError::Other(e.to_string()))?;
             crate::db::schema::initialize_schema(&mut conn)?;

@@ -50,7 +50,7 @@ Clarity operates in a two-phase process to ensure the UI remains snappy even wit
 
 1.  **Phase 1 (Reconciliation)**: The app scans your library. It identifies new or modified files based on metadata and updates the database immediately.
 2.  **Phase 2 (Background Jobs)**: Multi-threaded parallel workers pick up pending jobs to hash files, extract metadata, and generate thumbnails.
-3.  **Physical Mirroring**: When you tag or review media, Clarity creates hardlinks in your `Sorted/` directory, ensuring your organization is reflected on disk.
+3.  **Physical Mirroring**: When you tag or review media, Clarity creates hardlinks in your `Library/` directory, ensuring your organization is reflected on disk.
 
 ### Root Filesystem View
 ![root_fs.png](assets/root_fs.png)

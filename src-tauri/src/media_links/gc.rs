@@ -77,7 +77,7 @@ pub fn delete_file_by_rel_path(tx: &Transaction, library_root: &Path, rel_path: 
 /// and performs garbage collection on orphaned media.
 ///
 /// Only media_links under the provided dir_prefix are considered for deletion. This prevents
-/// accidental removal of media_links from other projections (e.g., Sorted/ tag folders) when
+/// accidental removal of media_links from other projections (e.g., Library/ tag folders) when
 /// reconciling Unsorted.
 ///
 /// Returns the number of media_links deleted under the scoped directory.

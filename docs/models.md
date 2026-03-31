@@ -11,7 +11,7 @@ The canonical identity of a piece of content.
 
 ### MediaLinkRow (`src-tauri\src\media_links\model.rs`)
 A filesystem projection of a `MediaRow`.
-- **Context**: Maps a `MediaRow` to a specific user-visible path (e.g., `Sorted Media/ByTag/Beach/video.mp4`).
+- **Context**: Maps a `MediaRow` to a specific user-visible path (e.g., `Library/ByTag/Beach/video.mp4`).
 - **Syncing**: Stores `mtime` and `size_bytes` to detect external modifications without re-hashing.
 - **Cleanup**: `last_seen_mtime` helps identify files deleted manually while the app was closed.
 
