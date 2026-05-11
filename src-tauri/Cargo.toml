@@ -30,7 +30,6 @@ tauri-plugin-dialog = "2.6.0"
 tauri-plugin-fs = "2.4.5"
 thiserror = "2.0.17"
 chrono = "0.4"
-notify = "8.2.0"
 strum = { version = "0.28.0", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp"] }
 tracing = "0.1"
