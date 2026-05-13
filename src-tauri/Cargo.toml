@@ -12,29 +12,31 @@ rust-version = "1.60"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2.5.5", features = [] }
+tauri-build = { version = "2.6.1", features = [] }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "2.10.2", features = [ "protocol-asset"] }
-rusqlite = { version = "0.37.0", features = ["bundled"] }
+tauri = { version = "2.11.1", features = [ "protocol-asset"] }
+# Cannot update to latest version due to dependency conflicts
+rusqlite = { version = "0.38.0", features = ["bundled"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.31.0"
-blake3 = "1.8.3"
+# Cannot update to latest version due to dependency conflicts
+r2d2_sqlite = "0.32.0"
+blake3 = "1.8.5"
 tauri-plugin-shell = "2.3.3"
-tauri-plugin-opener = "2.5.3"
-tauri-plugin-dialog = "2.6.0"
-thiserror = "2.0.17"
+tauri-plugin-opener = "2.5.4"
+tauri-plugin-dialog = "2.7.1"
+thiserror = "2.0.18"
 chrono = "0.4"
 strum = { version = "0.28.0", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 num_cpus = "1.17"
-tokio = { version = "1.49", features = ["fs", "time", "sync", "macros"] }
-uuid = { version = "1.21", features = ["v4"] }
-refinery = { version = "0.9.0", features = ["rusqlite"] }
+tokio = { version = "1.52.3", features = ["fs", "time", "sync", "macros"] }
+uuid = { version = "1.23.1", features = ["v4"] }
+refinery = { version = "0.9.1", features = ["rusqlite"] }
 
 [dev-dependencies]
 

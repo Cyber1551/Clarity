@@ -11,20 +11,20 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.34.0",
+    "@chakra-ui/react": "^3.35.0",
     "@emotion/react": "^11.14.0",
     "@formatjs/intl-durationformat": "^0.10.8",
-    "@tauri-apps/api": "^2.10.1",
-    "lucide-react": "^0.577.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-virtuoso": "^4.18.3",
-    "zustand": "^5.0.12"
+    "@tauri-apps/api": "^2.11.0",
+    "lucide-react": "^1.14.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-virtuoso": "^4.18.7",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@tauri-apps/cli": "^2.10.1",
-    "@types/node": "^25.5.0",
+    "@tauri-apps/cli": "^2.11.1",
+    "@types/node": "^25.7.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -32,10 +32,10 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "typescript": "~5.9.3",
+    "globals": "^17.6.0",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.57.1",
-    "vite": "^8.0.1"
+    "vite": "^8.0.12"
   },
   "packageManager": "pnpm@11.1.0+sha512.0c44e842e5686b2c061a81adda8b2258bd8818e9704b2cf2c63d56b931a7b2e910092e085027003b96ca3911ab56a07f6df5abaed2be9925034cdd686a535b14"
 }
