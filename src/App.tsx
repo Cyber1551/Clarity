@@ -59,7 +59,7 @@ const App = () => {
 
                 {error && <Text fontSize="xs" color="red.500">{error}</Text>}
 
-                <Button mt={4} onClick={pickLibraryRoot} disabled={isLoading} variant="outline">
+                <Button mt={4} onClick={() => void pickLibraryRoot()} disabled={isLoading} variant="outline">
                     {isLoading ? "Opening picker…" : "Pick a folder to continue"}
                 </Button>
             </Center>

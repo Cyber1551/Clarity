@@ -4,7 +4,7 @@ import { type WorkerStalledPayload } from "@/types/eventTypes";
 
 const RETRY_TIMEOUT_MS = 5000;
 
-type WorkerStatusState = {
+interface WorkerStatusState {
     stalled: boolean;
     lastError: string | null;
     consecutiveFailures: number;
@@ -21,7 +21,7 @@ type WorkerStatusState = {
     onStalled: (payload: WorkerStalledPayload) => void;
     onRecovered: () => void;
     retry: () => Promise<void>;
-};
+}
 
 export const useWorkerStatusStore = create<WorkerStatusState>((set, get) => ({
     stalled: false,

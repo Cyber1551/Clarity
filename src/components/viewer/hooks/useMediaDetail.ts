@@ -71,8 +71,9 @@ export function useMediaDetail({ mediaId, items }: UseMediaDetailArgs): UseMedia
         const idx = items.findIndex((i) => i.mediaId === id);
         if (idx === -1) return;
         const neighbors = [idx - 1, idx + 1]
-            .filter((n) => n >= 0 && n < items.length)
-            .map((n) => items[n].mediaId)
+            .map((n) => items[n])
+            .filter((item): item is MediaItem => item !== undefined)
+            .map((item) => item.mediaId)
             .filter((nid) => !cacheRef.current.has(nid));
 
         for (const nid of neighbors) {

@@ -1,4 +1,4 @@
-export type BlobWithMime = {
+export interface BlobWithMime {
     blob: BlobPart;
     mimetype: string;
-};
+}

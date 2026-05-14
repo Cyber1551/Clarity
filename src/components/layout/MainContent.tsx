@@ -51,7 +51,7 @@ export const MainContent = () => {
     useTauriEvent<JobCompletedPayload>("job-completed", (event) => {
         if (useInterfaceStore.getState().activeTab !== "library") return;
         const relPath = event.payload?.relPath;
-        if (!relPath || !relPath.startsWith("Library/")) return;
+        if (!relPath?.startsWith("Library/")) return;
         void refreshItemByRelPath(relPath);
     });
 

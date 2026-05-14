@@ -2,7 +2,7 @@ import { DurationFormat } from '@formatjs/intl-durationformat'
 
 const relativeTimeFormat = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
-const RELATIVE_TIME_UNITS: Array<{ unit: Intl.RelativeTimeFormatUnit; secondsPer: number }> = [
+const RELATIVE_TIME_UNITS: { unit: Intl.RelativeTimeFormatUnit; secondsPer: number }[] = [
     { unit: "year", secondsPer: 60 * 60 * 24 * 365 },
     { unit: "month", secondsPer: 60 * 60 * 24 * 30 },
     { unit: "day", secondsPer: 60 * 60 * 24 },
@@ -51,12 +51,16 @@ export function formatDuration(
 
 /**
  * Coerce an unknown thrown value into a human-readable string.
+ * TODO: This will be removed once proper error handling is in place.
  */
 export function formatError(err: unknown, fallback = "An unknown error occurred"): string {
     if (err == null) return fallback;
     if (err instanceof Error) return err.message;
     if (typeof err === "string") return err;
     try {
+        // The "[object Object]" check below is precisely why this stringification
+        // is intentional, so silence no-base-to-string for this defensive coercion.
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
         const str = String(err);
         return str === "[object Object]" ? fallback : str;
     } catch {

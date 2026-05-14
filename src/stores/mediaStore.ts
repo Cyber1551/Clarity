@@ -11,7 +11,7 @@ export type ViewerState = null | {
     items: MediaItem[];
 };
 
-type MediaStoreState = {
+interface MediaStoreState {
     items: MediaItem[];
     isLoading: boolean;
     error: string | null;
@@ -28,7 +28,7 @@ type MediaStoreState = {
     refreshItemByRelPath: (relPath: string) => Promise<void>;
     setScrollTargetMediaId: (mediaId: number | null) => void;
     clearHighlight: () => void;
-};
+}
 
 export const useMediaStore = create<MediaStoreState>((set, get) => ({
     items: [],
@@ -80,8 +80,9 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
         const idx = viewer.items.findIndex(i => i.mediaId === viewer.mediaId);
         if (idx === -1) return;
         const nextIdx = direction === "prev" ? idx - 1 : idx + 1;
-        if (nextIdx < 0 || nextIdx >= viewer.items.length) return;
-        set({ viewer: { ...viewer, mediaId: viewer.items[nextIdx].mediaId } });
+        const nextItem = viewer.items[nextIdx];
+        if (!nextItem) return;
+        set({ viewer: { ...viewer, mediaId: nextItem.mediaId } });
     },
 
     removeCurrentViewerItem() {
@@ -98,7 +99,9 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
         }
         
         const nextIdx = Math.min(idx, remaining.length - 1);
-        set({ viewer: { ...viewer, items: remaining, mediaId: remaining[nextIdx].mediaId } });
+        const nextItem = remaining[nextIdx];
+        if (!nextItem) return;
+        set({ viewer: { ...viewer, items: remaining, mediaId: nextItem.mediaId } });
     },
 
     highlightMedia(mediaId) {

@@ -3,14 +3,14 @@ import { getAppConfig, chooseLibraryRoot } from "@/api/configApi";
 import { type AppConfig } from "@/types/configTypes.ts";
 import { formatError } from "@/utils/format";
 
-type ConfigState = {
+interface ConfigState {
     config: AppConfig | null;
     isLoading: boolean;
     error: string | null;
 
     initConfig: () => Promise<void>;
     pickLibraryRoot: () => Promise<void>;
-};
+}
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
     config: null,

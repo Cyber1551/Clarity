@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { type ImportResult } from "@/types/importTypes";
 import { type ActiveTab, DEFAULT_ACTIVE_TAB, isActiveTab } from "@/constants/tabs";
 
-type InterfaceState = {
+interface InterfaceState {
     isSettingsDialogOpen: boolean;
     setSettingsDialogOpen: (open: boolean) => void;
     activeTab: ActiveTab;
@@ -14,7 +14,7 @@ type InterfaceState = {
     viewerSidebarOpen: boolean;
     setViewerSidebarOpen: (open: boolean) => void;
     toggleViewerSidebar: () => void;
-};
+}
 
 export const useInterfaceStore = create<InterfaceState>((set) => ({
     isSettingsDialogOpen: false,

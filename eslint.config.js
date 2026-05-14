@@ -6,13 +6,23 @@ import react from 'eslint-plugin-react'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'node_modules', 'src-tauri/target'] },
+
+  js.configs.recommended,
+
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
+    extends: [
+      ...tseslint.configs.recommendedTypeChecked,
+      ...tseslint.configs.stylisticTypeChecked,
+    ],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     plugins: {
       react,
@@ -36,6 +46,50 @@ export default tseslint.config(
         'warn',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
+
+      // Surface async error mishandling.
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      'react-hooks/exhaustive-deps': 'error',
+
+      // Phase 0 sets these to `warn`; Phase 1 sweeps the violations and flips
+      // them to `error` after the logger/notify/_invoke modules land.
+      'no-console': 'warn',
+      'no-restricted-imports': [
+        'warn',
+        {
+          paths: [
+            {
+              name: '@tauri-apps/api/core',
+              importNames: ['invoke'],
+              message:
+                'Import from src/api/* (which routes through _invoke) instead of importing invoke directly.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // Disable type-aware rules on JS config files (e.g. this file).
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    extends: [tseslint.configs.disableTypeChecked],
+  },
+
+  // The logger module is the single allowed home for console.* calls.
+  {
+    files: ['src/utils/logger.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
+  // The API layer is the single allowed home for direct @tauri-apps/api/core imports.
+  {
+    files: ['src/api/**/*.ts'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
 )

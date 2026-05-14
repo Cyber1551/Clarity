@@ -6,5 +6,5 @@ interface FormatDurationProps {
 }
 
 export function FormatDuration({ value, style }: FormatDurationProps) {
-    return <>{formatDuration(value, style)}</>;
+    return <>{formatDuration(value, style ?? "narrow")}</>;
 }

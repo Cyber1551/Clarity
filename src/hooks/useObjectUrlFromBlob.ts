@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { type BlobWithMime } from "@/types/binaryTypes.ts";
 
-type UseObjectUrlFromBlobOptions = {
+interface UseObjectUrlFromBlobOptions {
     enabled?: boolean;
     onError?: (error: unknown) => void;
-};
+}
 
 /**
  * Turns an async `{ blob, mimetype }` loader into an object URL with safe cleanup.

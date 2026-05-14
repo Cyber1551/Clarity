@@ -60,7 +60,7 @@ export const Header = () => {
             </Tabs.List>
 
             <HStack gap={3}>
-                <Button size="sm" onClick={handleImport} variant="outline">
+                <Button size="sm" onClick={() => void handleImport()} variant="outline">
                     <Plus size={16} /> Import
                 </Button>
 
@@ -73,7 +73,7 @@ export const Header = () => {
                     variant="ghost"
                     rounded="full"
                     disabled={!libraryRoot}
-                    onClick={handleOpenLibraryRoot}
+                    onClick={() => void handleOpenLibraryRoot()}
                 >
                     <FolderOpen size={18} />
                 </IconButton>

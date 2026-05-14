@@ -69,7 +69,7 @@ export function InfoTab({ detail, mode, onDetailChanged }: InfoTabProps) {
                     value={detail.favoriteRating}
                     colorActive="purple.400"
                     colorHover="purple.300"
-                    onChange={handleFavoriteChange}
+                    onChange={(v) => void handleFavoriteChange(v)}
                 />
                 <RatingRow
                     label="Quality"
@@ -77,7 +77,7 @@ export function InfoTab({ detail, mode, onDetailChanged }: InfoTabProps) {
                     value={detail.qualityRating}
                     colorActive="yellow.400"
                     colorHover="yellow.300"
-                    onChange={handleQualityChange}
+                    onChange={(v) => void handleQualityChange(v)}
                 />
             </VStack>
 

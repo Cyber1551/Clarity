@@ -46,13 +46,13 @@ interface ErrorBoundaryState {
  *   - The recovery action is matched to the boundary's scope (see {@link ErrorBoundaryLevel}).
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-    state: ErrorBoundaryState = { error: null, showDetails: false };
+    override state: ErrorBoundaryState = { error: null, showDetails: false };
 
-    static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-        return { error };
+    static getDerivedStateFromError(error: Error): ErrorBoundaryState | null {
+        return { error, showDetails: false };
     }
 
-    componentDidCatch(error: Error, info: ErrorInfo) {
+    override componentDidCatch(error: Error, info: ErrorInfo) {
         console.error("ErrorBoundary captured", error, info);
     }
 
@@ -73,7 +73,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         this.setState((s) => ({ showDetails: !s.showDetails }));
     };
 
-    render() {
+    override render() {
         const { error, showDetails } = this.state;
         if (!error) return this.props.children;
 

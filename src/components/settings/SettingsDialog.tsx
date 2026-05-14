@@ -31,7 +31,7 @@ export const SettingsDialog = () => {
                     <Stack direction="row" gap={2} w="full">
                         <Input
                             value={
-                                config?.libraryRoot ||
+                                config?.libraryRoot ??
                                 "No library selected. Choose a folder to continue."
                             }
                             disabled
