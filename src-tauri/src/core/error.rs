@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use image;
+use serde::{Serialize, Serializer, ser::SerializeStruct};
 use thiserror::Error;
 
 /// Result type alias using AppError.
@@ -67,17 +68,53 @@ pub enum AppError {
 }
 
 impl AppError {
-    /// Returns a string representation of the error for logging purposes.
-    pub fn report(&self) -> String {
-        tracing::error!("AppError occurred: {}", self);
-        self.to_string()
+    /// Stable string code for this error variant.
+    /// Mirrored on the frontend in `src/api/errors.ts` as the `TauriErrorCode` union,
+    /// so callers can branch on the kind of failure rather than scraping the message.
+    pub fn code(&self) -> &'static str {
+        match self {
+            AppError::Scan(_) => "SCAN",
+            AppError::LibraryRootMissing => "LIBRARY_ROOT_MISSING",
+            AppError::Database(_) => "DATABASE",
+            AppError::Refinery(_) => "REFINERY",
+            AppError::ImageError(_) => "IMAGE",
+            AppError::Config(_) => "CONFIG",
+            AppError::InputOutput(_) => "IO",
+            AppError::Json(_) => "JSON",
+            AppError::InvalidFileName { .. } => "INVALID_FILE_NAME",
+            AppError::Time => "TIME",
+            AppError::FileNotFound(_) => "FILE_NOT_FOUND",
+            AppError::NotFound(_) => "NOT_FOUND",
+            AppError::Job(_) => "JOB",
+            AppError::HashError(_) => "HASH",
+            AppError::DeduplicationError(_) => "DEDUP",
+            AppError::MetadataError(_) => "METADATA",
+            AppError::ThumbnailError(_) => "THUMBNAIL",
+            AppError::Unexpected(_) => "UNEXPECTED",
+            AppError::Other(_) => "OTHER",
+        }
+    }
+
+    /// Optional structured context emitted alongside `code` and `message`.
+    /// Only variants carrying extra structured data (beyond the Display string) surface anything here.
+    fn context_payload(&self) -> Option<String> {
+        match self {
+            AppError::InvalidFileName { path } => Some(path.to_string_lossy().into_owned()),
+            _ => None,
+        }
+    }
+
+    /// Logs this error via `tracing::error!`.
+    /// Designed to be passed by name to `Result::inspect_err`, so the call-site idiom is `.inspect_err(AppError::log)?`.
+    /// Replaces the older `report()` now that commands propagate `AppError` directly to the frontend.
+    pub fn log(&self) {
+        tracing::error!(code = %self.code(), message = %self, "AppError");
     }
 
     /// Wraps an error with additional context.
     pub fn context<S: Into<String>>(self, context: S) -> Self {
         let ctx = context.into();
         match self {
-            // Preserve specific error types when adding context
             AppError::Job(msg) => AppError::Job(format!("{ctx}: {msg}")),
             AppError::HashError(msg) => AppError::HashError(format!("{ctx}: {msg}")),
             AppError::DeduplicationError(msg) => AppError::DeduplicationError(format!("{ctx}: {msg}")),
@@ -86,6 +123,22 @@ impl AppError {
             AppError::Other(msg) => AppError::Other(format!("{ctx}: {msg}")),
             _ => AppError::Other(format!("{ctx}: {self}")),
         }
+    }
+}
+
+/// Tauri auto-serializes `Result<T, E>` errors when `E: Serialize`.
+/// The shape produced here is the contract consumed by the frontend's `parseTauriError` in `src/api/errors.ts`.
+impl Serialize for AppError {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let context = self.context_payload();
+        let n_fields = if context.is_some() { 3 } else { 2 };
+        let mut s = serializer.serialize_struct("AppError", n_fields)?;
+        s.serialize_field("code", self.code())?;
+        s.serialize_field("message", &self.to_string())?;
+        if let Some(ctx) = context {
+            s.serialize_field("context", &ctx)?;
+        }
+        s.end()
     }
 }
 

@@ -51,12 +51,9 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       'react-hooks/exhaustive-deps': 'error',
-
-      // Phase 0 sets these to `warn`; Phase 1 sweeps the violations and flips
-      // them to `error` after the logger/notify/_invoke modules land.
-      'no-console': 'warn',
+      'no-console': 'error',
       'no-restricted-imports': [
-        'warn',
+        'error',
         {
           paths: [
             {
@@ -77,11 +74,13 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
 
-  // The logger module is the single allowed home for console.* calls.
+  // The logger module is the single allowed home for console.* calls and direct `invoke` imports
+  // (forwarding logs to Rust must not recurse through _invoke, which itself logs via the logger).
   {
     files: ['src/utils/logger.ts'],
     rules: {
       'no-console': 'off',
+      'no-restricted-imports': 'off',
     },
   },
 

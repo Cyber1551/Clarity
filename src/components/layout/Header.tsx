@@ -5,6 +5,7 @@ import { useConfigStore } from "@/stores/configStore.ts";
 import { import_files } from "@/api/importApi";
 import { openLibraryRoot } from "@/api/configApi";
 import { TABS } from "@/constants/tabs";
+import { notify } from "@/utils/notify";
 
 export const Header = () => {
     const setSettingsDialogOpen = useInterfaceStore(s => s.setSettingsDialogOpen);
@@ -24,7 +25,7 @@ export const Header = () => {
                 setLastImportResult(result);
             }
         } catch (e) {
-            console.error("Import failed", e);
+            notify.error("Import failed", e);
         }
     };
 
@@ -34,7 +35,7 @@ export const Header = () => {
         try {
             await openLibraryRoot();
         } catch (e) {
-            console.error("Failed to open library folder", e);
+            notify.error("Couldn't open library folder", e);
         }
     };
 

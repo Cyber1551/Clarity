@@ -10,6 +10,7 @@ import { useMediaStore } from "@/stores/mediaStore.ts";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
 import { initialize_library } from "@/api/libraryApi.ts";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
+import { logger } from "@/utils/logger";
 
 const App = () => {
     const config = useConfigStore(s => s.config);
@@ -27,7 +28,7 @@ const App = () => {
     }, [initConfig]);
 
     useTauriEvent("library-initialized", () => {
-        console.log("Library initialized, loading media...");
+        logger.debug("app", "library initialized, loading media");
         void loadAllMedia();
     });
 

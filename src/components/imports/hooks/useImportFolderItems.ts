@@ -5,6 +5,7 @@ import { type MediaItem } from "@/types/mediaTypes";
 import { type JobCompletedPayload } from "@/types/eventTypes";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
 import { useInterfaceStore } from "@/stores/interfaceStore";
+import { notify } from "@/utils/notify";
 
 interface UseImportFolderItemsResult {
     items: MediaItem[];
@@ -27,7 +28,7 @@ export function useImportFolderItems(folderName: string | null): UseImportFolder
             const next = await get_items_in_import_folder(name);
             setItems(next);
         } catch (e) {
-            console.error("Failed to load import items", e);
+            notify.error("Couldn't load import items", e);
         } finally {
             setIsLoading(false);
         }
@@ -41,7 +42,7 @@ export function useImportFolderItems(folderName: string | null): UseImportFolder
                 existing.map(current => (current.relPath === item.relPath ? item : current))
             );
         } catch (e) {
-            console.error("Failed to refresh import item", e);
+            notify.error("Couldn't refresh import item", e);
         }
     }, []);
 

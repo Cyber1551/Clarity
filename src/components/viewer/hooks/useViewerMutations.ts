@@ -7,6 +7,7 @@ import {
     update_quality_rating,
 } from "@/api/libraryApi";
 import { useMediaStore } from "@/stores/mediaStore";
+import { notify } from "@/utils/notify";
 
 interface UseViewerMutationsArgs {
     /** Currently focused media id (null when viewer is closed). */
@@ -25,9 +26,10 @@ interface UseViewerMutationsResult {
 }
 
 /**
- * Wraps the viewer's mutating backend calls. Every call refetches the
- * current detail via `onMutated` so the UI stays consistent without callers
- * having to remember to invalidate.
+ * Wraps the viewer's mutating backend calls. 
+ * Every call refetches the current detail via `onMutated` so the UI stays consistent without callers having to remember to invalidate.
+ *
+ * Each catch block surfaces the failure via `notify.error`; the underlying `_invoke` chokepoint already logs the rejection once, so the only thing left to do here is tell the user.
  */
 export function useViewerMutations({
     mediaId,
@@ -41,7 +43,7 @@ export function useViewerMutations({
             await toggle_loved(mediaId);
             onMutated();
         } catch (e) {
-            console.error("toggle_loved failed", e);
+            notify.error("Couldn't update loved", e);
         }
     }, [mediaId, onMutated]);
 
@@ -51,7 +53,7 @@ export function useViewerMutations({
             await update_quality_rating(mediaId, rating);
             onMutated();
         } catch (e) {
-            console.error("update_quality_rating failed", e);
+            notify.error("Couldn't update quality rating", e);
         }
     }, [mediaId, onMutated]);
 
@@ -61,7 +63,7 @@ export function useViewerMutations({
             await update_favorite_rating(mediaId, rating);
             onMutated();
         } catch (e) {
-            console.error("update_favorite_rating failed", e);
+            notify.error("Couldn't update favorite rating", e);
         }
     }, [mediaId, onMutated]);
 
@@ -70,7 +72,7 @@ export function useViewerMutations({
             await rename_media_file(fileId, newName);
             onMutated();
         } catch (e) {
-            console.error("rename_media_file failed", e);
+            notify.error("Couldn't rename file", e);
         }
     }, [onMutated]);
 
@@ -80,7 +82,7 @@ export function useViewerMutations({
             await review_and_promote(mediaId);
             removeCurrentViewerItem();
         } catch (e) {
-            console.error("review_and_promote failed", e);
+            notify.error("Couldn't promote media", e);
         }
     }, [mediaId, removeCurrentViewerItem]);
 

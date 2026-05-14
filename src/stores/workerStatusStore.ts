@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { restart_workers } from "@/api/libraryApi";
 import { type WorkerStalledPayload } from "@/types/eventTypes";
+import { notify } from "@/utils/notify";
 
 const RETRY_TIMEOUT_MS = 5000;
 
@@ -65,7 +66,7 @@ export const useWorkerStatusStore = create<WorkerStatusState>((set, get) => ({
                 set({ retrying: false, lastRetryFailed: true });
             }, RETRY_TIMEOUT_MS);
         } catch (e) {
-            console.error("restart_workers failed", e);
+            notify.error("Couldn't restart workers", e);
             if (get().retryGen === startGen) {
                 set({ retrying: false, lastRetryFailed: true });
             }

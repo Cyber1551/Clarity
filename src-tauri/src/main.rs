@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::Manager;
-use app::commands::{library, media, import};
+use app::commands::{library, media, import, logging as cmd_logging};
 use app::core::config;
 use app::core::logging;
 use app::jobs::runner::JobWorkerManager;
@@ -71,6 +71,7 @@ fn main() {
             import::import_files,
             import::get_import_folders,
             import::get_items_in_import_folder,
+            cmd_logging::log_event,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

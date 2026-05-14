@@ -5,6 +5,7 @@ import { memo, type KeyboardEvent } from "react";
 import { get_thumbnail } from "@/api/libraryApi";
 import { keyframes } from "@emotion/react";
 import { useObjectUrlFromBlob } from "@/hooks/useObjectUrlFromBlob";
+import { logger } from "@/utils/logger";
 
 interface MediaCardProps {
     item: MediaItem;
@@ -29,7 +30,7 @@ const MediaCard = ({ item, mode, allItems }: MediaCardProps) => {
         [item.contentHash, item.thumbnailStatus],
         {
             enabled: item.thumbnailStatus === "done",
-            onError: (e) => console.error("Failed to load thumbnail", e),
+            onError: (e) => logger.debug("thumbnails", "failed to load thumbnail", { error: e }),
         }
     );
 

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { logger } from "@/utils/logger";
+import { notify } from "@/utils/notify";
 
 interface UseCopyToClipboardOptions {
     /** How long the `copied` flag stays true after a successful copy (ms). */
@@ -6,11 +8,9 @@ interface UseCopyToClipboardOptions {
 }
 
 /**
- * Wrapper around `navigator.clipboard.writeText` that exposes a transient
- * "just copied" flag for confirming UI feedback.
+ * Wrapper around `navigator.clipboard.writeText` that exposes a transient "just copied" flag for confirming UI feedback.
  *
- * Returns `[copy, copied]`. The `copied` flag flips back to `false` after
- * `resetMs` (default 2000ms) or unmount, whichever comes first.
+ * Returns `[copy, copied]`. The `copied` flag flips back to `false` after `resetMs` (default 2000ms) or unmount, whichever comes first.
  */
 export function useCopyToClipboard(
     { resetMs = 2000 }: UseCopyToClipboardOptions = {},
@@ -29,7 +29,10 @@ export function useCopyToClipboard(
             if (timerRef.current) clearTimeout(timerRef.current);
             timerRef.current = setTimeout(() => setCopied(false), resetMs);
         } catch (err) {
-            console.error("Failed to copy to clipboard", err);
+            // Not a Tauri command, so `_invoke` won't have logged it.
+            // Do both here: log for diagnostics and surface so the user knows the user-initiated copy didn't go through.
+            logger.error("clipboard", err);
+            notify.error("Couldn't copy to clipboard", err);
         }
     }, [resetMs]);
 

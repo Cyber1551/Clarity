@@ -1,6 +1,7 @@
 import { Box, Button, Code, HStack, Heading, Text, VStack } from "@chakra-ui/react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { formatError } from "@/utils/format";
+import { logger } from "@/utils/logger";
 
 /**
  * Scope of the boundary, used to decide which recovery actions and which presentation are appropriate. Pick the smallest scope you can
@@ -53,7 +54,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
 
     override componentDidCatch(error: Error, info: ErrorInfo) {
-        console.error("ErrorBoundary captured", error, info);
+        logger.error("react-boundary", error, { componentStack: info.componentStack });
     }
 
     private reset = () => this.setState({ error: null, showDetails: false });

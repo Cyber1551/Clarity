@@ -55,7 +55,7 @@ export function InfoTab({ detail, mode, onDetailChanged }: InfoTabProps) {
                     value={<FormatRelativeTime value={detail.createdAt} />}
                     valueWrapper={(node) => (
                         <Tooltip content={new Date(detail.createdAt).toLocaleString()}>
-                            <Text fontSize="xs" cursor="default">{node}</Text>
+                            {node}
                         </Tooltip>
                     )}
                 />

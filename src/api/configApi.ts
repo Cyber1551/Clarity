@@ -1,14 +1,15 @@
-import { invoke } from "@tauri-apps/api/core";
 import { type AppConfig } from "@/types/configTypes.ts";
 
+import { _invoke } from "./_invoke";
+
 export async function getAppConfig(): Promise<AppConfig> {
-    return await invoke<AppConfig>("get_app_config");
+    return await _invoke<AppConfig>("get_app_config");
 }
 
 export async function chooseLibraryRoot(): Promise<string | null> {
-    return await invoke<string | null>("choose_library_root");
+    return await _invoke<string | null>("choose_library_root");
 }
 
 export async function openLibraryRoot(): Promise<void> {
-    await invoke("open_library_root");
+    await _invoke("open_library_root");
 }

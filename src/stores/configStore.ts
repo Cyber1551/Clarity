@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { getAppConfig, chooseLibraryRoot } from "@/api/configApi";
 import { type AppConfig } from "@/types/configTypes.ts";
 import { formatError } from "@/utils/format";
+import { notify } from "@/utils/notify";
 
 interface ConfigState {
     config: AppConfig | null;
@@ -23,10 +24,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         set({ isLoading: true, error: null });
         try {
             const cfg = await getAppConfig();
-            console.log("Loaded config:", cfg);
+            // `_invoke` already logged any failure path; the inline `error` state surfaces it in the picker view.
             set({ config: cfg, isLoading: false });
         } catch (err) {
-            console.error("Failed to load config", err);
             set({
                 error: formatError(err, "Failed to load configuration."),
                 isLoading: false,
@@ -49,7 +49,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
                 set({ isLoading: false });
             }
         } catch (err) {
-            console.error("Failed to choose library root", err);
+            notify.error("Couldn't choose library root", err);
             set({
                 error: formatError(err, "Failed to choose library root."),
                 isLoading: false,

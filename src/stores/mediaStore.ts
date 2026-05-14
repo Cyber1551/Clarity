@@ -2,6 +2,7 @@ import { type MediaItem } from "@/types/mediaTypes";
 import { create } from "zustand";
 import { get_media_items, get_media_item_by_rel_path } from "@/api/libraryApi";
 import { formatError } from "@/utils/format";
+import { notify } from "@/utils/notify";
 
 export type ViewerMode = "import" | "library";
 
@@ -58,7 +59,7 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
                 isLoading: false,
             });
         } catch (err) {
-            console.error("Failed to load media", err);
+            // `_invoke` already logged the failure; `MediaGrid` reads this `error` field and renders the inline empty/error state.
             set({
                 error: formatError(err, "Failed to load media."),
                 isLoading: false,
@@ -118,7 +119,8 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
                 ),
             }));
         } catch (err) {
-            console.error("Failed to refresh media item", err);
+            // Background refresh; no inline UI to surface the failure, so a toast is the only place the user finds out.
+            notify.error("Couldn't refresh media item", err);
         }
     },
 
