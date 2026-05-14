@@ -4,7 +4,6 @@ pub const CONFIG_FILE_NAME: &str = "config.json";
 pub const FFMPEG_BIN: &str = "ffmpeg";
 pub const FFPROBE_BIN: &str = "ffprobe";
 pub const WORKER_THREAD_SLEEP_DURATION: Duration = Duration::from_millis(1000);
-pub const WATCHER_DEBOUNCE_DURATION: Duration = Duration::from_millis(500);
 pub const MAX_THREADS: usize = 1;
 
 // Job processing

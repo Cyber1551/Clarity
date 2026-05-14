@@ -1,7 +1,7 @@
-// src/stores/configStore.ts
 import { create } from "zustand";
-import { getAppConfig, chooseLibraryRoot } from "../api/configApi";
-import { AppConfig } from "@/types/configTypes.ts";
+import { getAppConfig, chooseLibraryRoot } from "@/api/configApi";
+import { type AppConfig } from "@/types/configTypes.ts";
+import { formatError } from "@/utils/format";
 
 type ConfigState = {
     config: AppConfig | null;
@@ -28,7 +28,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         } catch (err) {
             console.error("Failed to load config", err);
             set({
-                error: err?.toString?.() ?? "Failed to load configuration.",
+                error: formatError(err, "Failed to load configuration."),
                 isLoading: false,
             });
         }
@@ -51,7 +51,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         } catch (err) {
             console.error("Failed to choose library root", err);
             set({
-                error: err?.toString?.() ?? "Failed to choose library root.",
+                error: formatError(err, "Failed to choose library root."),
                 isLoading: false,
             });
         }

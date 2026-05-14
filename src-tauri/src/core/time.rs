@@ -1,5 +1,5 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use chrono::Utc;
 
 pub fn now_ms() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64
+    Utc::now().timestamp_millis()
 }

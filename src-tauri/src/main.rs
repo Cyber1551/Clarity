@@ -38,7 +38,7 @@ fn main() {
                 }
                 Err(e) => {
                     // First-run case: the user hasn't chosen a library yet.
-                    // We'll start workers and watchers later when they pick one.
+                    // We'll start workers later when they pick one.
                     tracing::info!("Job worker not started (library root not set): {}", e);
                 }
             }
@@ -52,16 +52,22 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             library::get_app_config,
             library::choose_library_root,
             library::initialize_library,
             library::open_library_root,
+            library::restart_workers,
             media::get_media_items,
             media::get_media_item_by_rel_path,
             media::get_media_detail,
             media::get_thumbnail,
+            media::mark_as_reviewed,
+            media::review_and_promote,
+            media::update_quality_rating,
+            media::update_favorite_rating,
+            media::toggle_loved,
+            media::rename_media_file,
             import::import_files,
             import::get_import_folders,
             import::get_items_in_import_folder,

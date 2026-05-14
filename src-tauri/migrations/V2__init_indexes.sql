@@ -1,18 +1,26 @@
 -- `media`
+-- Powers ORDER BY m.created_at DESC in get_media_items / get_media_items_in_dir (gallery sort).
 CREATE INDEX IF NOT EXISTS idx_media_created_at ON media(created_at);
-CREATE INDEX IF NOT EXISTS idx_media_hash_status ON media(hash_status) WHERE hash_status IN ('pending', 'error');
-CREATE INDEX IF NOT EXISTS idx_media_metadata_status ON media(metadata_status) WHERE metadata_status IN ('pending', 'error');
-CREATE INDEX IF NOT EXISTS idx_media_thumbnail_status ON media(thumbnail_status) WHERE thumbnail_status IN ('pending', 'error');
 
--- `media_links`
-CREATE INDEX IF NOT EXISTS idx_media_links_media_id ON media_links(media_id);
-CREATE INDEX IF NOT EXISTS idx_media_links_dir_path ON media_links(dir_path);
-CREATE INDEX IF NOT EXISTS idx_media_links_ext ON media_links(ext);
-CREATE INDEX IF NOT EXISTS idx_media_links_created_at ON media_links(created_at);
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_media_links_media_dir ON media_links(media_id, dir_path);
+-- `media_files`
+-- Powers WHERE dir_path = ? (get_media_items_in_dir) and WHERE dir_path LIKE 'prefix%'
+-- (remove_deleted_files_in_dir_like, the Library%-scoped subquery in get_media_items).
+CREATE INDEX IF NOT EXISTS idx_media_files_dir_path ON media_files(dir_path);
+
+-- Enforces "one hardlink per (media, directory)" invariant. Also serves as the
+-- composite index for any media_id-only lookup via leftmost-prefix (list_by_media_id,
+-- set_reviewed_for_media, the orphan NOT EXISTS check on media_files.media_id, etc.).
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_media_files_media_dir ON media_files(media_id, dir_path);
 
 -- `jobs`
+-- Powers claim_next_pending: filters status IN ('pending','error') and walks
+-- the index backwards for ORDER BY priority DESC, created_at DESC.
 CREATE INDEX IF NOT EXISTS idx_jobs_status_priority_created ON jobs(status, priority, created_at);
+
+-- Required for the FK `jobs.media_id REFERENCES media(id) ON DELETE CASCADE`.
+-- Without this, every media row deletion does a full jobs scan to find children.
 CREATE INDEX IF NOT EXISTS idx_jobs_media_id ON jobs(media_id);
-CREATE INDEX IF NOT EXISTS idx_jobs_file_id ON jobs(file_id);
-CREATE INDEX IF NOT EXISTS idx_jobs_cleanup ON jobs(attempts, status);
+
+-- Powers cleanup_failed_jobs: WHERE status = 'error' AND attempts >= ?.
+-- Equality column (status) leads, range column (attempts) follows for an efficient seek.
+CREATE INDEX IF NOT EXISTS idx_jobs_cleanup ON jobs(status, attempts);

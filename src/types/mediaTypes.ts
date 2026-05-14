@@ -34,6 +34,7 @@ export interface MediaFileRef {
     dirPath: string;
     fileName: string;
     ext: string;
+    originalFileName: string | null;
 }
 
 export interface MediaDetail {
@@ -46,6 +47,9 @@ export interface MediaDetail {
     qualityRating: number;
     favoriteRating: number;
     loved: boolean;
+    sizeBytes: number;
+    createdAt: number;
+    reviewedAt: number | null;
     files: MediaFileRef[];
     canonicalPath: string;
 }

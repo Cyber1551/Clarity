@@ -1,8 +1,15 @@
-import { MediaItem } from "@/types/mediaTypes";
+import { type MediaItem } from "@/types/mediaTypes";
 import { create } from "zustand";
 import { get_media_items, get_media_item_by_rel_path } from "@/api/libraryApi";
+import { formatError } from "@/utils/format";
 
-export type ViewerState = null | { mediaId: number; };
+export type ViewerMode = "import" | "library";
+
+export type ViewerState = null | {
+    mediaId: number;
+    mode: ViewerMode;
+    items: MediaItem[];
+};
 
 type MediaStoreState = {
     items: MediaItem[];
@@ -10,12 +17,13 @@ type MediaStoreState = {
     error: string | null;
     viewer: ViewerState;
     highlightedMediaId: number | null;
-    highlightUntil: number | null;
     scrollTargetMediaId: number | null;
     setIsLoading: (isLoading: boolean) => void;
     loadAllMedia: () => Promise<void>;
-    openViewer: (mediaId: number) => void;
+    openViewer: (mediaId: number, mode: ViewerMode, items: MediaItem[]) => void;
     closeViewer: () => void;
+    navigateViewer: (direction: "prev" | "next") => void;
+    removeCurrentViewerItem: () => void;
     highlightMedia: (mediaId: number) => void;
     refreshItemByRelPath: (relPath: string) => Promise<void>;
     setScrollTargetMediaId: (mediaId: number | null) => void;
@@ -28,7 +36,6 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
     error: null,
     viewer: null,
     highlightedMediaId: null,
-    highlightUntil: null,
     scrollTargetMediaId: null,
 
     setIsLoading(isLoading) {
@@ -53,22 +60,49 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
         } catch (err) {
             console.error("Failed to load media", err);
             set({
-                error: err?.toString?.() ?? "Failed to load media.",
+                error: formatError(err, "Failed to load media."),
                 isLoading: false,
             });
         }
     },
 
-    openViewer(mediaId) {
-        set({ viewer: { mediaId } });
+    openViewer(mediaId, mode, viewerItems) {
+        set({ viewer: { mediaId, mode, items: viewerItems } });
     },
 
     closeViewer() {
         set({ viewer: null });
     },
 
+    navigateViewer(direction) {
+        const viewer = get().viewer;
+        if (!viewer) return;
+        const idx = viewer.items.findIndex(i => i.mediaId === viewer.mediaId);
+        if (idx === -1) return;
+        const nextIdx = direction === "prev" ? idx - 1 : idx + 1;
+        if (nextIdx < 0 || nextIdx >= viewer.items.length) return;
+        set({ viewer: { ...viewer, mediaId: viewer.items[nextIdx].mediaId } });
+    },
+
+    removeCurrentViewerItem() {
+        const viewer = get().viewer;
+        if (!viewer) return;
+        
+        const idx = viewer.items.findIndex(i => i.mediaId === viewer.mediaId);
+        if (idx === -1) return;
+        
+        const remaining = viewer.items.filter(i => i.mediaId !== viewer.mediaId);
+        if (remaining.length === 0) {
+            set({ viewer: null });
+            return;
+        }
+        
+        const nextIdx = Math.min(idx, remaining.length - 1);
+        set({ viewer: { ...viewer, items: remaining, mediaId: remaining[nextIdx].mediaId } });
+    },
+
     highlightMedia(mediaId) {
-        set({ highlightedMediaId: mediaId, highlightUntil: null });
+        set({ highlightedMediaId: mediaId });
     },
 
     async refreshItemByRelPath(relPath) {
@@ -90,6 +124,6 @@ export const useMediaStore = create<MediaStoreState>((set, get) => ({
     },
 
     clearHighlight() {
-        set({ highlightedMediaId: null, highlightUntil: null });
+        set({ highlightedMediaId: null });
     },
 }));

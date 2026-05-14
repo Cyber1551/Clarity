@@ -143,7 +143,7 @@ mod tests {
         let mut conn = Connection::open_in_memory()?;
         initialize_schema(&mut conn)?;
 
-        // Disable foreign keys for this test to avoid needing to populate media/media_links tables
+        // Disable foreign keys for this test to avoid needing to populate media/media_files tables
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
 
         let req = EnqueueJobRequest {

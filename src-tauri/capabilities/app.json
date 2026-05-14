@@ -4,8 +4,6 @@
   "windows": ["*"],
   "permissions": [
     "core:default",
-    "fs:default",
-    "fs:allow-watch",
     "dialog:default",
     "shell:default",
     {
@@ -22,14 +20,6 @@
           "args": true
         }
       ]
-    },
-    {
-      "identifier": "fs:allow-read-text-file",
-      "allow": ["**", "**/*", "**/.*", "**/.*/**"]
-    },
-    {
-      "identifier": "fs:allow-read-file",
-      "allow": ["**", "**/*", "**/.*", "**/.*/**"]
     }
   ]
 }

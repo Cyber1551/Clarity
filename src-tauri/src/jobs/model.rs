@@ -119,6 +119,21 @@ pub struct JobCompletedPayload {
     pub status: JobStatus,
 }
 
+/// Emitted when the worker has hit STALL_THRESHOLD consecutive infrastructure
+/// failures. The worker keeps retrying with backoff; the UI can use this to
+/// inform the user and offer a Retry button.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkerStalledPayload {
+    pub error_message: String,
+    pub consecutive_failures: u32,
+}
+
+/// Emitted when the worker successfully completes a claim cycle after
+/// previously being stalled.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkerRecoveredPayload {}
+
 /// Parameters for enqueueing a background job.
 pub struct EnqueueJobRequest {
     pub file_id: i64,

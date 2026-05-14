@@ -54,10 +54,10 @@ pub async fn import_files(
         // 2. Database Identity
         let media = match db::media::get_by_content_hash(&conn, &content_hash).map_err(|e| e.report())? {
             Some(m) => {
-                let existing_links = db::media_links::list_by_media_id(&conn, m.id).map_err(|e| e.report())?;
+                let existing_links = db::media_files::list_by_media_id(&conn, m.id).map_err(|e| e.report())?;
                 if !existing_links.is_empty() {
                     let import_prefix = format!("{}/", IMPORTS_DIRECTORY);
-                    let mut import_links = db::media_links::list_by_media_in_dir_like(&conn, m.id, &import_prefix).map_err(|e| e.report())?;
+                    let mut import_links = db::media_files::list_by_media_in_dir_like(&conn, m.id, &import_prefix).map_err(|e| e.report())?;
                     import_links.sort_by_key(|link| link.created_at);
                     let original = import_links.first();
                     let original_import_folder = original
@@ -86,7 +86,7 @@ pub async fn import_files(
         objects::ingest_and_link(src_path, &root, &content_hash, ext, &dest_path_abs).map_err(|e| e.report())?;
 
         // 4. Record the link in the database
-        let upsert_result = db::media_links::upsert(&conn, media.id, &dest_path_rel, &dest_path_abs).map_err(|e| e.report())?;
+        let upsert_result = db::media_files::upsert(&conn, media.id, &dest_path_rel, &dest_path_abs).map_err(|e| e.report())?;
 
         // 5. Enqueue jobs
         if upsert_result.is_new || upsert_result.mtime_changed {

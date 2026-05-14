@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { MediaItem } from "@/types/mediaTypes";
-import { ImportResult } from "@/types/importTypes";
+import { type MediaItem } from "@/types/mediaTypes";
+import { type ImportResult } from "@/types/importTypes";
 
 export async function import_files(): Promise<ImportResult | null> {
     return await invoke("import_files");

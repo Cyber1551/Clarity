@@ -1,7 +1,7 @@
 use serde::Serialize;
 use crate::media::{MediaType, MediaItem};
 use crate::jobs::JobStatus;
-use crate::media_links::MediaLinkRow;
+use crate::media_files::MediaFileRow;
 use crate::thumbnails::ThumbnailRow;
 
 #[derive(Debug, Clone, Serialize)]
@@ -58,16 +58,18 @@ pub struct FileDto {
     pub dir_path: String,
     pub file_name: String,
     pub ext: String,
+    pub original_file_name: Option<String>,
 }
 
-impl From<MediaLinkRow> for FileDto {
-    fn from(link: MediaLinkRow) -> Self {
+impl From<MediaFileRow> for FileDto {
+    fn from(file: MediaFileRow) -> Self {
         Self {
-            id: link.id,
-            rel_path: link.rel_path,
-            dir_path: link.dir_path,
-            file_name: link.file_name,
-            ext: link.ext,
+            id: file.id,
+            rel_path: file.rel_path,
+            dir_path: file.dir_path,
+            file_name: file.file_name,
+            ext: file.ext,
+            original_file_name: file.original_file_name,
         }
     }
 }
@@ -84,6 +86,9 @@ pub struct MediaDetailDto {
     pub quality_rating: i32,
     pub favorite_rating: i32,
     pub loved: bool,
+    pub size_bytes: i64,
+    pub created_at: i64,
+    pub reviewed_at: Option<i64>,
     pub files: Vec<FileDto>,
     pub canonical_path: String,
 }

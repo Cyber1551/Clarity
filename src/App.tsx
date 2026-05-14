@@ -1,15 +1,15 @@
-import Header from "@/components/Header";
-import MainContent from "@/components/MainContent";
-import { Box, Button, Center, Spinner, Tabs } from "@chakra-ui/react";
+import { Box, Button, Center, Spinner, Tabs, Text, VStack } from "@chakra-ui/react";
+import { useEffect } from "react";
+import { Header, MainContent } from "@/components/layout";
+import { SettingsDialog } from "@/components/settings";
+import { Viewer } from "@/components/viewer";
+import { WorkerStatusBanner } from "@/components/status";
+import { ErrorBoundary } from "@/components/common";
 import { useConfigStore } from "@/stores/configStore.ts";
 import { useMediaStore } from "@/stores/mediaStore.ts";
-import { useEffect } from "react";
-import { SettingsDialog } from "@/components/SettingsDialog.tsx";
-import { initialize_library } from "@/api/libraryApi.ts";
-import { listen } from "@tauri-apps/api/event";
-import { Viewer } from "@/components/Viewer";
-
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
+import { initialize_library } from "@/api/libraryApi.ts";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 
 const App = () => {
     const config = useConfigStore(s => s.config);
@@ -26,21 +26,13 @@ const App = () => {
         void initConfig();
     }, [initConfig]);
 
-    // Listen for library initialization completion
-    useEffect(() => {
-        const unsubscribe = listen("library-initialized", () => {
-            console.log("Library initialized, loading media...");
-            void loadAllMedia();
-        });
-
-        return () => {
-            unsubscribe.then(fn => fn());
-        };
-    }, [loadAllMedia]);
+    useTauriEvent("library-initialized", () => {
+        console.log("Library initialized, loading media...");
+        void loadAllMedia();
+    });
 
     useEffect(() => {
         if (config?.libraryRoot) {
-            // Initialize library directory structure
             setIsLoading(true);
             void initialize_library();
         }
@@ -48,58 +40,58 @@ const App = () => {
 
     if (isLoading && !config) {
         return (
-            <Box minH={"100vh"}>
+            <Box minH="100vh">
                 <Spinner />
             </Box>
-        )
+        );
     }
 
     if (!config?.libraryRoot) {
         return (
-            <Center minH={"100vh"} gap={4} flexDirection={"column"}>
-                <div className="flex flex-col items-center gap-2">
-                    <h1 className="text-xl font-semibold">Choose a media library folder</h1>
-                    <p className="text-sm text-muted-foreground max-w-md text-center">
+            <Center minH="100vh" gap={4} flexDirection="column">
+                <VStack gap={2}>
+                    <Text fontSize="xl" fontWeight="semibold">Choose a media library folder</Text>
+                    <Text fontSize="sm" color="gray.500" maxW="md" textAlign="center">
                         Pick a folder to use as your library root. All scans, tags, and
                         thumbnails will live inside this folder.
-                    </p>
-                </div>
+                    </Text>
+                </VStack>
 
-                {error && <p className="text-xs text-red-500">{error}</p>}
+                {error && <Text fontSize="xs" color="red.500">{error}</Text>}
 
-                <Button
-                    marginTop={4}
-                    onClick={pickLibraryRoot}
-                    disabled={isLoading}
-                    className="px-4 py-2 rounded-md border"
-                >
+                <Button mt={4} onClick={pickLibraryRoot} disabled={isLoading} variant="outline">
                     {isLoading ? "Opening picker…" : "Pick a folder to continue"}
                 </Button>
             </Center>
-        )
+        );
     }
 
     return (
-        <Box minH={"100vh"}>
+        <Box minH="100vh">
+            <WorkerStatusBanner />
             <Tabs.Root
                 value={activeTab}
                 onValueChange={(e) => setActiveTab(e.value)}
-                variant={"enclosed"}
+                variant="enclosed"
                 display="flex"
                 flexDirection="column"
                 h="100vh"
             >
-                <Header
-                    folderPath={""}
-                    cacheActionText={{}}
-                    onPickFolder={() => Promise.resolve()}
-                />
+                <Header />
                 <MainContent />
             </Tabs.Root>
-            <Viewer />
+            <ErrorBoundary
+                level="route"
+                title="This view ran into a problem"
+                description="You can close the viewer and keep using the rest of the app. Your library and files are unaffected."
+                resetLabel="Close viewer"
+                onReset={() => useMediaStore.getState().closeViewer()}
+            >
+                <Viewer />
+            </ErrorBoundary>
             <SettingsDialog />
         </Box>
     );
-}
+};
 
 export default App;

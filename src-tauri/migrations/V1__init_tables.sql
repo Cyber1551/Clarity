@@ -1,4 +1,4 @@
--- `media` table represents the content itself. Multiple `media_links` can point to the same media
+-- `media` table represents the content itself. Multiple `media_files` can point to the same media
 CREATE TABLE IF NOT EXISTS media (
     id                  INTEGER PRIMARY KEY,
     content_hash        TEXT NOT NULL UNIQUE,
@@ -17,13 +17,15 @@ CREATE TABLE IF NOT EXISTS media (
     updated_at          INTEGER NOT NULL
 );
 
--- `media_links` table represent each hardlink file reference to a media item on disk. Does not contain `media_links` in the .objects folder
-CREATE TABLE IF NOT EXISTS media_links (
+-- `media_files` table represents each hardlink file reference to a media item on disk.
+-- Does not contain files in the .objects folder as those are the source of truth files per content_hash.
+CREATE TABLE IF NOT EXISTS media_files (
     id                  INTEGER PRIMARY KEY,
     media_id            INTEGER NOT NULL REFERENCES media(id),
     rel_path            TEXT NOT NULL UNIQUE,
     dir_path            TEXT NOT NULL,
     file_name           TEXT NOT NULL,
+    original_file_name  TEXT DEFAULT NULL,
     ext                 TEXT NOT NULL,
     size_bytes          INTEGER NOT NULL,
     mtime               INTEGER NOT NULL,

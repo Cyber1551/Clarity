@@ -14,7 +14,7 @@ How files enter the library and are processed.
 ### 3. Projection
 - **Path Generation**: Based on attributes (date, tags, quality, favorites), the app determines target paths in `Library` or `Imports`.
 - **Hardlinking**: Physical hardlinks are created from the `.objects` file to the target paths.
-- **Database Link**: `MediaLinkRow` records are inserted for each new path, pointing to the `MediaRow`.
+- **Database Link**: `MediaFileRow` records are inserted for each new path, pointing to the `MediaRow`.
 
 ### 4. Asynchronous Enrichment
 - **Metadata Extraction**: A `Metadata` job is enqueued to probe for width, height, and duration.

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { AppConfig } from "@/types/configTypes.ts";
+import { type AppConfig } from "@/types/configTypes.ts";
 
 export async function getAppConfig(): Promise<AppConfig> {
     return await invoke<AppConfig>("get_app_config");

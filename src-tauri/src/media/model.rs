@@ -44,7 +44,7 @@ impl ToSql for MediaType {
 
 /// Represents unique media content identified by content_hash.
 ///
-/// Multiple media_links can reference the same media row (deduplication).
+/// Multiple media_files can reference the same media row (deduplication).
 /// Tracks processing status for hashing, metadata extraction, and thumbnail generation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MediaRow {
@@ -92,7 +92,7 @@ impl MediaRow {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaItem {
     pub media: MediaRow,
-    /// The representative path for this media item (from the media_links table)
+    /// The representative path for this media item (from the media_files table)
     pub rel_path: Option<String>,
     pub dir_path: Option<String>,
     pub file_name: Option<String>,

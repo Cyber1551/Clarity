@@ -150,6 +150,36 @@ pub fn mark_thumbnail_done(conn: &Connection, media_id: i64, now: i64) -> AppRes
     Ok(())
 }
 
+pub fn update_quality_rating(conn: &Connection, media_id: i64, rating: i32, now: i64) -> AppResult<()> {
+    conn.execute(
+        r#"UPDATE media SET quality_rating = ?1, updated_at = ?2 WHERE id = ?3"#,
+        params![rating, now, media_id],
+    )?;
+    Ok(())
+}
+
+pub fn update_favorite_rating(conn: &Connection, media_id: i64, rating: i32, now: i64) -> AppResult<()> {
+    conn.execute(
+        r#"UPDATE media SET favorite_rating = ?1, updated_at = ?2 WHERE id = ?3"#,
+        params![rating, now, media_id],
+    )?;
+    Ok(())
+}
+
+pub fn toggle_loved(conn: &Connection, media_id: i64, now: i64) -> AppResult<bool> {
+    let current: bool = conn.query_row(
+        "SELECT loved FROM media WHERE id = ?1",
+        params![media_id],
+        |row| row.get(0),
+    )?;
+    let new_val = !current;
+    conn.execute(
+        r#"UPDATE media SET loved = ?1, updated_at = ?2 WHERE id = ?3"#,
+        params![new_val, now, media_id],
+    )?;
+    Ok(new_val)
+}
+
 /// Marks thumbnail generation as failed for a media entry.
 pub fn mark_thumbnail_error(conn: &Connection, media_id: i64, now: i64) -> AppResult<()> {
     conn.execute(r#"
@@ -169,7 +199,7 @@ pub fn get_orphaned_media(conn: &Connection) -> AppResult<Vec<(i64, String)>> {
         SELECT m.id, m.content_hash
         FROM media m
         WHERE NOT EXISTS (
-            SELECT 1 FROM media_links f WHERE f.media_id = m.id
+            SELECT 1 FROM media_files f WHERE f.media_id = m.id
         )
     "#)?;
 
@@ -181,7 +211,7 @@ pub fn get_orphaned_media(conn: &Connection) -> AppResult<Vec<(i64, String)>> {
     Ok(orphaned_media)
 }
 
-/// Deletes a media row if no media_links reference it.
+/// Deletes a media row if no media_files reference it.
 ///
 /// Returns the content_hash if deleted, None otherwise.
 pub fn delete_unreferenced_by_id(conn: &Connection, media_id: i64) -> AppResult<Option<String>> {
@@ -189,7 +219,7 @@ pub fn delete_unreferenced_by_id(conn: &Connection, media_id: i64) -> AppResult<
     // `RETURNING content_hash` gives us the hash if a row was deleted.
     let deleted_hash: Option<String> = conn.query_row(r#"
         DELETE FROM media
-        WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM media_links WHERE media_id = ?1)
+        WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM media_files WHERE media_id = ?1)
         RETURNING content_hash
     "#, params![media_id], |row| row.get(0)).optional()?;
 
@@ -221,8 +251,8 @@ pub fn get_media_items(conn: &Connection) -> AppResult<Vec<MediaItem>> {
             rf.file_name,
             rf.ext
         FROM media m
-        INNER JOIN media_links rf ON rf.id = ( 
-            SELECT id FROM media_links 
+        INNER JOIN media_files rf ON rf.id = ( 
+            SELECT id FROM media_files 
             WHERE media_id = m.id AND dir_path LIKE 'Library%' 
             LIMIT 1 
         )
@@ -267,7 +297,7 @@ pub fn get_media_items_in_dir(conn: &Connection, dir_path: &str) -> AppResult<Ve
             rf.file_name,
             rf.ext
         FROM media m
-        INNER JOIN media_links rf ON rf.media_id = m.id
+        INNER JOIN media_files rf ON rf.media_id = m.id
         WHERE rf.dir_path = ?1
         ORDER BY m.created_at DESC
     "#)?;
@@ -310,7 +340,7 @@ pub fn get_media_item_by_rel_path(conn: &Connection, rel_path: &str) -> AppResul
             rf.file_name,
             rf.ext
         FROM media m
-        INNER JOIN media_links rf ON rf.media_id = m.id
+        INNER JOIN media_files rf ON rf.media_id = m.id
         WHERE rf.rel_path = ?1
         LIMIT 1
     "#)?;

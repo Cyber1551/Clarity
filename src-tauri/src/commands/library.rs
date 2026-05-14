@@ -73,3 +73,25 @@ pub fn open_library_root(app: tauri::AppHandle) -> Result<(), String> {
 
     Ok(())
 }
+
+/// User-initiated worker restart. Wakes any worker currently in backoff
+/// (so it retries immediately) and respawns the worker if a previous task
+/// died. Used by the stalled-worker UI banner's Retry button.
+#[tauri::command]
+pub fn restart_workers(
+    job_worker_manager: State<'_, JobWorkerManager>,
+    db_manager: State<'_, Arc<DbManager>>,
+    library_root_state: State<'_, Arc<LibraryRootState>>,
+) -> Result<(), String> {
+    let root = library_root_state
+        .0
+        .lock()
+        .unwrap()
+        .as_ref()
+        .ok_or_else(|| "Library root not set".to_string())?
+        .clone();
+
+    job_worker_manager.wake();
+    job_worker_manager.try_start_worker(&root, db_manager.inner().clone());
+    Ok(())
+}

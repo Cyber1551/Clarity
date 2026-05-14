@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::time::UNIX_EPOCH;
+use chrono::{DateTime, Utc};
 use image::ImageReader;
 use serde::Deserialize;
 use tauri_plugin_shell::ShellExt;
@@ -37,12 +37,8 @@ pub fn get_file_size(path: &Path) -> AppResult<i64> {
 
 pub fn get_mtime(path: &Path) -> AppResult<i64> {
     let meta = std::fs::metadata(path)?;
-    let mtime = meta
-        .modified()?
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as i64;
-    Ok(mtime)
+    let dt: DateTime<Utc> = meta.modified()?.into();
+    Ok(dt.timestamp_millis())
 }
 
 pub async fn probe_media_metadata(path: &Path, media_type: MediaType) -> AppResult<ProbedMetadata> {
