@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AUTO_HIDE_DELAY } from "../constants";
 
 interface UseAutoHideHeaderArgs {
-    /** Whether the viewer is open. */
-    isOpen: boolean;
     /** Sidebar pinned-open state: pauses auto-hide. */
     sidebarOpen: boolean;
     /** Rename in progress: pauses auto-hide. */
@@ -23,7 +21,6 @@ interface UseAutoHideHeaderResult {
  * a rename is in progress.
  */
 export function useAutoHideHeader({
-    isOpen,
     sidebarOpen,
     renameActive,
 }: UseAutoHideHeaderArgs): UseAutoHideHeaderResult {
@@ -47,20 +44,15 @@ export function useAutoHideHeader({
         }
     }, [isPinned, clearTimer]);
 
-    // The viewer was opened, the pinned state changed, or the viewer was
-    // closed: reset the visible state and (re)schedule the timer accordingly.
+    // (Re)schedule the auto-hide timer whenever the pinned state changes.
     useEffect(() => {
-        if (!isOpen) {
-            clearTimer();
-            return;
-        }
         if (isPinned) {
             clearTimer();
             return;
         }
         timerRef.current = setTimeout(() => setHidden(true), AUTO_HIDE_DELAY);
         return clearTimer;
-    }, [isOpen, isPinned, clearTimer]);
+    }, [isPinned, clearTimer]);
 
     // While pinned the header is always visible regardless of the timer.
     const visible = isPinned ? true : !hidden;

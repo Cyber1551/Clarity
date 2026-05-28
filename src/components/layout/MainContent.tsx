@@ -1,3 +1,4 @@
+import React from "react";
 import { Box, Tabs } from "@chakra-ui/react";
 import { useMediaStore } from "@/stores/mediaStore";
 import { MediaGrid } from "@/components/library";

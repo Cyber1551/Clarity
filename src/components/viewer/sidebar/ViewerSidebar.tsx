@@ -7,7 +7,6 @@ import { SubtitlesTab } from "./tabs/SubtitlesTab";
 import { getVisibleTabs, type ViewerTabId } from "./tabsConfig";
 import { useState } from "react";
 import { SIDEBAR_WIDTH } from "../constants";
-import { ErrorBoundary } from "@/components/common";
 
 interface ViewerSidebarProps {
     open: boolean;
@@ -82,12 +81,7 @@ export function ViewerSidebar({ open, detail, mode, onDetailChanged }: ViewerSid
                         p={4}
                         overflowY="auto"
                     >
-                        <ErrorBoundary
-                            level="leaf"
-                            description={`Couldn't load the ${tab.label.toLowerCase()} panel.`}
-                        >
-                            {TAB_RENDERERS[tab.id]({ detail, mode, onDetailChanged })}
-                        </ErrorBoundary>
+                        {TAB_RENDERERS[tab.id]({ detail, mode, onDetailChanged })}
                     </Tabs.Content>
                 ))}
             </Tabs.Root>

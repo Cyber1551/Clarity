@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 
 interface UseViewerKeyboardArgs {
-    enabled: boolean;
     canGoPrev: boolean;
     canGoNext: boolean;
     isImportMode: boolean;
@@ -24,7 +23,6 @@ const RATING_KEYS = new Set(["1", "2", "3"]);
  * All callbacks are stable references when memoized at the call site.
  */
 export function useViewerKeyboard({
-    enabled,
     canGoPrev,
     canGoNext,
     isImportMode,
@@ -39,8 +37,6 @@ export function useViewerKeyboard({
     onMouseMove,
 }: UseViewerKeyboardArgs): void {
     useEffect(() => {
-        if (!enabled) return;
-
         const handleKeyDown = (e: KeyboardEvent) => {
             if (renameActive) return;
             const target = e.target as HTMLElement;
@@ -91,7 +87,7 @@ export function useViewerKeyboard({
             window.removeEventListener("mousemove", onMouseMove);
         };
     }, [
-        enabled, canGoPrev, canGoNext, isImportMode, renameActive,
+        canGoPrev, canGoNext, isImportMode, renameActive,
         onPrev, onNext, onClose, onToggleSidebar, onLoveToggle, onRate,
         onMarkReviewed, onMouseMove,
     ]);

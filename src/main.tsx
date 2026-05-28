@@ -21,7 +21,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
 createRoot(document.getElementById("root")!).render(
     <Provider>
-        <ErrorBoundary>
+        <ErrorBoundary name="root">
             <App />
         </ErrorBoundary>
     </Provider>

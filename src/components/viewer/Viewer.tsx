@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Box, Dialog, Portal } from "@chakra-ui/react";
-import { useMediaStore } from "@/stores/mediaStore";
+import { useMediaStore, type ViewerState } from "@/stores/mediaStore";
 import { useInterfaceStore } from "@/stores/interfaceStore";
 import { ViewerHeader } from "./header/ViewerHeader";
 import { ViewerStage } from "./stage/ViewerStage";
@@ -12,11 +12,21 @@ import { useViewerKeyboard } from "./hooks/useViewerKeyboard";
 import { useViewerMutations } from "./hooks/useViewerMutations";
 import { NAV_TRANSITION_MS } from "./constants";
 
+/**
+ * Thin gate that returns null when no media is open. All hooks (data fetch,
+ * keyboard listeners, auto-hide timer, mutations) live in {@link ViewerImpl}
+ * so they only subscribe while the viewer is actually open. Render errors in
+ * the viewer subtree bubble to the single root boundary in main.tsx.
+ */
 export function Viewer() {
     const viewer = useMediaStore((s) => s.viewer);
+    if (!viewer) return null;
+    return <ViewerImpl viewer={viewer} />;
+}
+
+function ViewerImpl({ viewer }: { viewer: NonNullable<ViewerState> }) {
     const closeViewer = useMediaStore((s) => s.closeViewer);
     const navigateViewer = useMediaStore((s) => s.navigateViewer);
-    const isOpen = Boolean(viewer);
 
     const sidebarOpen = useInterfaceStore((s) => s.viewerSidebarOpen);
     const toggleSidebar = useInterfaceStore((s) => s.toggleViewerSidebar);
@@ -24,14 +34,12 @@ export function Viewer() {
     const [transitioning, setTransitioning] = useState(false);
     const [renameActive, setRenameActive] = useState(false);
 
-    const mediaId = viewer?.mediaId ?? null;
-    const items = viewer?.items ?? [];
-    const currentIndex = viewer
-        ? viewer.items.findIndex((i) => i.mediaId === viewer.mediaId)
-        : -1;
-    const totalCount = viewer?.items.length ?? 0;
+    const mediaId = viewer.mediaId;
+    const items = viewer.items;
+    const currentIndex = items.findIndex((i) => i.mediaId === mediaId);
+    const totalCount = items.length;
     const canGoPrev = currentIndex > 0;
-    const canGoNext = viewer ? currentIndex < viewer.items.length - 1 : false;
+    const canGoNext = currentIndex < items.length - 1;
 
     const { detail, loading, error, reload, invalidate } = useMediaDetail({
         mediaId,
@@ -39,7 +47,6 @@ export function Viewer() {
     });
 
     const handleMutated = useCallback(() => {
-        if (mediaId == null) return;
         invalidate(mediaId);
         reload();
     }, [mediaId, invalidate, reload]);
@@ -50,7 +57,6 @@ export function Viewer() {
     });
 
     const { visible: headerVisible, reset: resetHideTimer } = useAutoHideHeader({
-        isOpen,
         sidebarOpen,
         renameActive,
     });
@@ -76,10 +82,9 @@ export function Viewer() {
     }, [detail, mutations]);
 
     useViewerKeyboard({
-        enabled: isOpen,
         canGoPrev,
         canGoNext,
-        isImportMode: viewer?.mode === "import",
+        isImportMode: viewer.mode === "import",
         renameActive,
         onPrev: () => handleNavigate("prev"),
         onNext: () => handleNavigate("next"),
@@ -95,7 +100,7 @@ export function Viewer() {
     const isReviewed = detail?.reviewedAt != null;
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && closeViewer()} size="full">
+        <Dialog.Root open onOpenChange={(e) => !e.open && closeViewer()} size="full">
             <Portal>
                 <Dialog.Backdrop />
                 <Dialog.Positioner>
@@ -112,7 +117,7 @@ export function Viewer() {
                         <Box display="flex" h="full" w="full" position="relative">
                             <ViewerHeader
                                 detail={detail}
-                                mode={viewer?.mode ?? "library"}
+                                mode={viewer.mode}
                                 currentIndex={currentIndex}
                                 totalCount={totalCount}
                                 visible={headerVisible}
@@ -144,7 +149,7 @@ export function Viewer() {
                             <ViewerSidebar
                                 open={sidebarOpen}
                                 detail={detail}
-                                mode={viewer?.mode ?? "library"}
+                                mode={viewer.mode}
                                 onDetailChanged={handleMutated}
                             />
                         </Box>

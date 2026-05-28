@@ -4,7 +4,6 @@ import { Header, MainContent } from "@/components/layout";
 import { SettingsDialog } from "@/components/settings";
 import { Viewer } from "@/components/viewer";
 import { WorkerStatusBanner } from "@/components/status";
-import { ErrorBoundary } from "@/components/common";
 import { useConfigStore } from "@/stores/configStore.ts";
 import { useMediaStore } from "@/stores/mediaStore.ts";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
@@ -81,15 +80,7 @@ const App = () => {
                 <Header />
                 <MainContent />
             </Tabs.Root>
-            <ErrorBoundary
-                level="route"
-                title="This view ran into a problem"
-                description="You can close the viewer and keep using the rest of the app. Your library and files are unaffected."
-                resetLabel="Close viewer"
-                onReset={() => useMediaStore.getState().closeViewer()}
-            >
-                <Viewer />
-            </ErrorBoundary>
+            <Viewer />
             <SettingsDialog />
         </Box>
     );
