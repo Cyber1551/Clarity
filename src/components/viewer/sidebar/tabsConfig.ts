@@ -1,5 +1,5 @@
 import { type MediaDetail } from "@/types/mediaTypes";
-import { type ViewerMode } from "@/stores/mediaStore";
+import { type ViewerMode } from "@/stores/viewerStore";
 
 export type ViewerTabId = "info" | "files" | "subtitles";
 

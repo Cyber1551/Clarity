@@ -6,7 +6,7 @@ import {
     update_favorite_rating,
     update_quality_rating,
 } from "@/api/libraryApi";
-import { useMediaStore } from "@/stores/mediaStore";
+import { useViewerStore } from "@/stores/viewerStore";
 import { notify } from "@/utils/notify";
 
 interface UseViewerMutationsArgs {
@@ -35,7 +35,7 @@ export function useViewerMutations({
     mediaId,
     onMutated,
 }: UseViewerMutationsArgs): UseViewerMutationsResult {
-    const removeCurrentViewerItem = useMediaStore((s) => s.removeCurrentViewerItem);
+    const removeCurrentViewerItem = useViewerStore((s) => s.removeCurrentViewerItem);
 
     const toggleLoved = useCallback(async () => {
         if (mediaId == null) return;

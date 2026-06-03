@@ -1,7 +1,7 @@
 import { Box, Button, HStack, IconButton, Text } from "@chakra-ui/react";
 import { ArrowLeft, PanelRight, Check } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
-import { type ViewerMode } from "@/stores/mediaStore";
+import { type ViewerMode } from "@/stores/viewerStore";
 import { type MediaDetail } from "@/types/mediaTypes";
 import { FileNameRename } from "./FileNameRename";
 import { LoveButton } from "./LoveButton";

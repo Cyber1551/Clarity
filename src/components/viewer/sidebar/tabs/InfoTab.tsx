@@ -1,6 +1,6 @@
 import { FormatByte, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
 import { type MediaDetail } from "@/types/mediaTypes";
-import { type ViewerMode } from "@/stores/mediaStore";
+import { type ViewerMode } from "@/stores/viewerStore";
 import { Star, Gem, ChevronDown, ChevronUp, Copy, Check, Users, Bookmark } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useState } from "react";

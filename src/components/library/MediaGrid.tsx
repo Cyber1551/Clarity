@@ -3,7 +3,7 @@ import { Box, type BoxProps, Grid, type GridProps, Spinner, Text } from "@chakra
 import { MediaCard } from "./MediaCard";
 import { VirtuosoGrid, type VirtuosoGridHandle } from "react-virtuoso";
 import { forwardRef, useEffect, useMemo, useRef } from "react";
-import { type ViewerMode } from "@/stores/mediaStore";
+import { type ViewerMode } from "@/stores/viewerStore";
 
 interface MediaGridProps {
     items: MediaItem[];

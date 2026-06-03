@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Box, Dialog, Portal } from "@chakra-ui/react";
-import { useMediaStore, type ViewerState } from "@/stores/mediaStore";
+import { useViewerStore, type ViewerState } from "@/stores/viewerStore";
 import { useInterfaceStore } from "@/stores/interfaceStore";
 import { ViewerHeader } from "./header/ViewerHeader";
 import { ViewerStage } from "./stage/ViewerStage";
@@ -19,14 +19,14 @@ import { NAV_TRANSITION_MS } from "./constants";
  * the viewer subtree bubble to the single root boundary in main.tsx.
  */
 export function Viewer() {
-    const viewer = useMediaStore((s) => s.viewer);
+    const viewer = useViewerStore((s) => s.viewer);
     if (!viewer) return null;
     return <ViewerImpl viewer={viewer} />;
 }
 
 function ViewerImpl({ viewer }: { viewer: NonNullable<ViewerState> }) {
-    const closeViewer = useMediaStore((s) => s.closeViewer);
-    const navigateViewer = useMediaStore((s) => s.navigateViewer);
+    const closeViewer = useViewerStore((s) => s.closeViewer);
+    const navigateViewer = useViewerStore((s) => s.navigateViewer);
 
     const sidebarOpen = useInterfaceStore((s) => s.viewerSidebarOpen);
     const toggleSidebar = useInterfaceStore((s) => s.toggleViewerSidebar);

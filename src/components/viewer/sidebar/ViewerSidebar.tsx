@@ -1,6 +1,6 @@
 import { Box, Tabs, Text } from "@chakra-ui/react";
 import { type MediaDetail } from "@/types/mediaTypes";
-import { type ViewerMode } from "@/stores/mediaStore";
+import { type ViewerMode } from "@/stores/viewerStore";
 import { InfoTab } from "./tabs/InfoTab";
 import { FilesTab } from "./tabs/FilesTab";
 import { SubtitlesTab } from "./tabs/SubtitlesTab";

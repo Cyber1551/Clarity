@@ -1,6 +1,7 @@
 import { type MediaItem, type JobStatus } from "@/types/mediaTypes";
 import { Box, Image, Spinner, Text } from "@chakra-ui/react";
-import { useMediaStore, type ViewerMode } from "@/stores/mediaStore";
+import { useMediaStore } from "@/stores/mediaStore";
+import { useViewerStore, type ViewerMode } from "@/stores/viewerStore";
 import { memo, type KeyboardEvent } from "react";
 import { get_thumbnail } from "@/api/libraryApi";
 import { keyframes } from "@emotion/react";
@@ -22,7 +23,7 @@ const pulse = keyframes`
 const IN_FLIGHT_STATUSES: ReadonlySet<JobStatus> = new Set(["pending", "processing"]);
 
 const MediaCard = ({ item, mode, allItems }: MediaCardProps) => {
-    const openViewer = useMediaStore(s => s.openViewer);
+    const openViewer = useViewerStore(s => s.openViewer);
     const highlightedMediaId = useMediaStore(s => s.highlightedMediaId);
 
     const thumbUrl = useObjectUrlFromBlob(
