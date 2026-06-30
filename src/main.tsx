@@ -1,4 +1,6 @@
 import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "./index.css";
 import App from "./App.tsx";
 import { Provider } from "@/components/ui/provider.tsx";
@@ -19,10 +21,27 @@ window.addEventListener("unhandledrejection", (e) => {
     notify.error("Something went wrong", e.reason);
 });
 
+// Single QueryClient instance for the app lifetime.
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: 1,
+            refetchOnWindowFocus: false,
+            staleTime: 30_000,
+        },
+        mutations: {
+            onError: (e) => notify.error("Action failed", e),
+        },
+    },
+});
+
 createRoot(document.getElementById("root")!).render(
-    <Provider>
-        <ErrorBoundary name="root">
-            <App />
-        </ErrorBoundary>
-    </Provider>
+    <QueryClientProvider client={queryClient}>
+        <Provider>
+            <ErrorBoundary name="root">
+                <App />
+            </ErrorBoundary>
+        </Provider>
+        {import.meta.env.DEV && <ReactQueryDevtools buttonPosition="bottom-left" />}
+    </QueryClientProvider>
 );

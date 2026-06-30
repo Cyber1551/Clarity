@@ -6,7 +6,7 @@ import { useInterfaceStore } from "@/stores/interfaceStore";
 import { ViewerHeader } from "./header/ViewerHeader";
 import { ViewerStage } from "./stage/ViewerStage";
 import { ViewerSidebar } from "./sidebar/ViewerSidebar";
-import { useMediaDetail } from "./hooks/useMediaDetail";
+import { useMediaDetail } from "@/queries/library/useMediaDetail";
 import { useAutoHideHeader } from "./hooks/useAutoHideHeader";
 import { useViewerKeyboard } from "./hooks/useViewerKeyboard";
 import { useViewerMutations } from "./hooks/useViewerMutations";
@@ -41,20 +41,12 @@ function ViewerImpl({ viewer }: { viewer: NonNullable<ViewerState> }) {
     const canGoPrev = currentIndex > 0;
     const canGoNext = currentIndex < items.length - 1;
 
-    const { detail, loading, error, reload, invalidate } = useMediaDetail({
+    const { detail, loading, error, reload } = useMediaDetail({
         mediaId,
         items,
     });
 
-    const handleMutated = useCallback(() => {
-        invalidate(mediaId);
-        reload();
-    }, [mediaId, invalidate, reload]);
-
-    const mutations = useViewerMutations({
-        mediaId,
-        onMutated: handleMutated,
-    });
+    const mutations = useViewerMutations({ mediaId });
 
     const { visible: headerVisible, reset: resetHideTimer } = useAutoHideHeader({
         sidebarOpen,
@@ -150,7 +142,6 @@ function ViewerImpl({ viewer }: { viewer: NonNullable<ViewerState> }) {
                                 open={sidebarOpen}
                                 detail={detail}
                                 mode={viewer.mode}
-                                onDetailChanged={handleMutated}
                             />
                         </Box>
                     </Dialog.Content>

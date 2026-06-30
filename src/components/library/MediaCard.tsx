@@ -3,10 +3,8 @@ import { Box, Image, Spinner, Text } from "@chakra-ui/react";
 import { useMediaStore } from "@/stores/mediaStore";
 import { useViewerStore, type ViewerMode } from "@/stores/viewerStore";
 import { memo, type KeyboardEvent } from "react";
-import { get_thumbnail } from "@/api/libraryApi";
 import { keyframes } from "@emotion/react";
-import { useObjectUrlFromBlob } from "@/hooks/useObjectUrlFromBlob";
-import { logger } from "@/utils/logger";
+import { useThumbnailUrl } from "@/queries/thumbnails/useThumbnailUrl";
 
 interface MediaCardProps {
     item: MediaItem;
@@ -26,14 +24,9 @@ const MediaCard = ({ item, mode, allItems }: MediaCardProps) => {
     const openViewer = useViewerStore(s => s.openViewer);
     const highlightedMediaId = useMediaStore(s => s.highlightedMediaId);
 
-    const thumbUrl = useObjectUrlFromBlob(
-        () => get_thumbnail(item.contentHash),
-        [item.contentHash, item.thumbnailStatus],
-        {
-            enabled: item.thumbnailStatus === "done",
-            onError: (e) => logger.debug("thumbnails", "failed to load thumbnail", { error: e }),
-        }
-    );
+    const thumbUrl = useThumbnailUrl(item.contentHash, {
+        enabled: item.thumbnailStatus === "done",
+    });
 
     const isHighlighted = highlightedMediaId === item.mediaId;
 

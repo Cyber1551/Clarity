@@ -12,20 +12,19 @@ interface ViewerSidebarProps {
     open: boolean;
     detail: MediaDetail | null;
     mode: ViewerMode;
-    onDetailChanged: () => void;
 }
 
 const TAB_RENDERERS: Record<
     ViewerTabId,
-    (props: { detail: MediaDetail | null; mode: ViewerMode; onDetailChanged: () => void }) => React.ReactNode
+    (props: { detail: MediaDetail | null; mode: ViewerMode }) => React.ReactNode
 > = {
-    info: ({ detail, mode, onDetailChanged }) =>
-        detail ? <InfoTab detail={detail} mode={mode} onDetailChanged={onDetailChanged} /> : null,
+    info: ({ detail, mode }) =>
+        detail ? <InfoTab detail={detail} mode={mode} /> : null,
     files: ({ detail }) => (detail ? <FilesTab files={detail.files} /> : null),
     subtitles: () => <SubtitlesTab />,
 };
 
-export function ViewerSidebar({ open, detail, mode, onDetailChanged }: ViewerSidebarProps) {
+export function ViewerSidebar({ open, detail, mode }: ViewerSidebarProps) {
     const visibleTabs = getVisibleTabs(mode);
     const [activeTab, setActiveTab] = useState<ViewerTabId>("info");
 
@@ -81,7 +80,7 @@ export function ViewerSidebar({ open, detail, mode, onDetailChanged }: ViewerSid
                         p={4}
                         overflowY="auto"
                     >
-                        {TAB_RENDERERS[tab.id]({ detail, mode, onDetailChanged })}
+                        {TAB_RENDERERS[tab.id]({ detail, mode })}
                     </Tabs.Content>
                 ))}
             </Tabs.Root>

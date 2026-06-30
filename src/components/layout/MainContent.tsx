@@ -3,9 +3,7 @@ import { Box, Tabs } from "@chakra-ui/react";
 import { useMediaStore } from "@/stores/mediaStore";
 import { MediaGrid } from "@/components/library";
 import { ImportsView } from "@/components/imports";
-import { useInterfaceStore } from "@/stores/interfaceStore";
-import { useTauriEvent } from "@/hooks/useTauriEvent";
-import { type JobCompletedPayload } from "@/types/eventTypes";
+import { useMediaItems } from "@/queries/library/useMediaItems";
 import { TABS, type ActiveTab } from "@/constants/tabs";
 
 const TAB_PANELS: Record<ActiveTab, () => React.ReactNode> = {
@@ -19,9 +17,7 @@ const TAB_PANELS: Record<ActiveTab, () => React.ReactNode> = {
 };
 
 function LibraryPanel() {
-    const items = useMediaStore((s) => s.items);
-    const isLoading = useMediaStore((s) => s.isLoading);
-    const error = useMediaStore((s) => s.error);
+    const { items, isLoading, error } = useMediaItems();
     const scrollTargetMediaId = useMediaStore((s) => s.scrollTargetMediaId);
     const setScrollTargetMediaId = useMediaStore((s) => s.setScrollTargetMediaId);
 
@@ -45,20 +41,7 @@ function tabContentExtraProps(value: ActiveTab) {
 }
 
 export const MainContent = () => {
-    const loadAllMedia = useMediaStore((s) => s.loadAllMedia);
-    const refreshItemByRelPath = useMediaStore((s) => s.refreshItemByRelPath);
     const clearHighlight = useMediaStore((s) => s.clearHighlight);
-
-    useTauriEvent<JobCompletedPayload>("job-completed", (event) => {
-        if (useInterfaceStore.getState().activeTab !== "library") return;
-        const relPath = event.payload?.relPath;
-        if (!relPath?.startsWith("Library/")) return;
-        void refreshItemByRelPath(relPath);
-    });
-
-    useTauriEvent("library-changed", () => {
-        void loadAllMedia();
-    });
 
     return (
         <Box as="main" flex="1" minH={0} display="flex" flexDirection="column">

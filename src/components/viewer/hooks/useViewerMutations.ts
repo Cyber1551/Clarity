@@ -1,19 +1,13 @@
 import { useCallback } from "react";
-import {
-    rename_media_file,
-    review_and_promote,
-    toggle_loved,
-    update_favorite_rating,
-    update_quality_rating,
-} from "@/api/libraryApi";
-import { useViewerStore } from "@/stores/viewerStore";
-import { notify } from "@/utils/notify";
+import { useRenameMediaFile } from "@/queries/library/useRenameMediaFile";
+import { useReviewAndPromote } from "@/queries/library/useReviewAndPromote";
+import { useToggleLoved } from "@/queries/library/useToggleLoved";
+import { useUpdateFavoriteRating } from "@/queries/library/useUpdateFavoriteRating";
+import { useUpdateQualityRating } from "@/queries/library/useUpdateQualityRating";
 
 interface UseViewerMutationsArgs {
     /** Currently focused media id (null when viewer is closed). */
     mediaId: number | null;
-    /** Called after a successful mutation so the cache can be invalidated and refetched. */
-    onMutated: () => void;
 }
 
 interface UseViewerMutationsResult {
@@ -26,65 +20,43 @@ interface UseViewerMutationsResult {
 }
 
 /**
- * Wraps the viewer's mutating backend calls. 
- * Every call refetches the current detail via `onMutated` so the UI stays consistent without callers having to remember to invalidate.
- *
- * Each catch block surfaces the failure via `notify.error`; the underlying `_invoke` chokepoint already logs the rejection once, so the only thing left to do here is tell the user.
+ * Bundles the viewer's mutating backend calls behind a stable, mediaId-aware facade.
+ * Each underlying mutation lives in `@/queries/library/` and handles its own invalidation + error toast
  */
 export function useViewerMutations({
     mediaId,
-    onMutated,
 }: UseViewerMutationsArgs): UseViewerMutationsResult {
-    const removeCurrentViewerItem = useViewerStore((s) => s.removeCurrentViewerItem);
+    const toggleLovedM = useToggleLoved();
+    const updateQualityM = useUpdateQualityRating();
+    const updateFavoriteM = useUpdateFavoriteRating();
+    const renameM = useRenameMediaFile();
+    const promoteM = useReviewAndPromote();
 
     const toggleLoved = useCallback(async () => {
         if (mediaId == null) return;
-        try {
-            await toggle_loved(mediaId);
-            onMutated();
-        } catch (e) {
-            notify.error("Couldn't update loved", e);
-        }
-    }, [mediaId, onMutated]);
+        await toggleLovedM.mutateAsync(mediaId).catch(() => undefined);
+    }, [mediaId, toggleLovedM]);
 
     const setQuality = useCallback(async (rating: number) => {
         if (mediaId == null) return;
-        try {
-            await update_quality_rating(mediaId, rating);
-            onMutated();
-        } catch (e) {
-            notify.error("Couldn't update quality rating", e);
-        }
-    }, [mediaId, onMutated]);
+        await updateQualityM.mutateAsync({ mediaId, rating }).catch(() => undefined);
+    }, [mediaId, updateQualityM]);
 
     const setFavorite = useCallback(async (rating: number) => {
         if (mediaId == null) return;
-        try {
-            await update_favorite_rating(mediaId, rating);
-            onMutated();
-        } catch (e) {
-            notify.error("Couldn't update favorite rating", e);
-        }
-    }, [mediaId, onMutated]);
+        await updateFavoriteM.mutateAsync({ mediaId, rating }).catch(() => undefined);
+    }, [mediaId, updateFavoriteM]);
 
-    const rename = useCallback(async (fileId: number, newName: string) => {
-        try {
-            await rename_media_file(fileId, newName);
-            onMutated();
-        } catch (e) {
-            notify.error("Couldn't rename file", e);
-        }
-    }, [onMutated]);
+    const rename = useCallback(async (fileId: number, newFileName: string) => {
+        await renameM
+            .mutateAsync({ fileId, newFileName, mediaId })
+            .catch(() => undefined);
+    }, [mediaId, renameM]);
 
     const markReviewed = useCallback(async () => {
         if (mediaId == null) return;
-        try {
-            await review_and_promote(mediaId);
-            removeCurrentViewerItem();
-        } catch (e) {
-            notify.error("Couldn't promote media", e);
-        }
-    }, [mediaId, removeCurrentViewerItem]);
+        await promoteM.mutateAsync(mediaId).catch(() => undefined);
+    }, [mediaId, promoteM]);
 
     return { toggleLoved, setQuality, setFavorite, rename, markReviewed };
 }

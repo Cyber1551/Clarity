@@ -1,8 +1,6 @@
 import { type ImportSkippedItem } from "@/types/importTypes.ts";
-import { get_thumbnail } from "@/api/libraryApi.ts";
 import { Box, Button, HStack, VStack, Text, Image } from "@chakra-ui/react";
-import { useObjectUrlFromBlob } from "@/hooks/useObjectUrlFromBlob";
-import { logger } from "@/utils/logger";
+import { useThumbnailUrl } from "@/queries/thumbnails/useThumbnailUrl";
 
 export interface ImportsDuplicateRowProps {
     item: ImportSkippedItem;
@@ -10,13 +8,7 @@ export interface ImportsDuplicateRowProps {
 }
 
 export const ImportsDuplicateRow = ({ item, onJump }: ImportsDuplicateRowProps) => {
-    const thumbUrl = useObjectUrlFromBlob(
-        () => get_thumbnail(item.contentHash),
-        [item.contentHash],
-        {
-            onError: (e) => logger.debug("thumbnails", "failed to load thumbnail", { error: e }),
-        }
-    );
+    const thumbUrl = useThumbnailUrl(item.contentHash);
 
     const location = item.existingDirPath ?? item.originalImportFolder ?? "Library";
 

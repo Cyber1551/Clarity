@@ -4,10 +4,8 @@ import { type ViewerMode } from "@/stores/viewerStore";
 import { Star, Gem, ChevronDown, ChevronUp, Copy, Check, Users, Bookmark } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useState } from "react";
-import {
-    update_favorite_rating,
-    update_quality_rating,
-} from "@/api/libraryApi";
+import { useUpdateFavoriteRating } from "@/queries/library/useUpdateFavoriteRating";
+import { useUpdateQualityRating } from "@/queries/library/useUpdateQualityRating";
 import {
     ComingSoonRow,
     FormatDuration,
@@ -20,22 +18,21 @@ import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 interface InfoTabProps {
     detail: MediaDetail;
     mode: ViewerMode;
-    onDetailChanged: () => void;
 }
 
-export function InfoTab({ detail, mode, onDetailChanged }: InfoTabProps) {
+export function InfoTab({ detail, mode }: InfoTabProps) {
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [copyHash, hashCopied] = useCopyToClipboard();
     const originalFileName = detail.files?.[0]?.originalFileName ?? null;
+    const updateQuality = useUpdateQualityRating();
+    const updateFavorite = useUpdateFavoriteRating();
 
-    const handleQualityChange = async (newRating: number) => {
-        await update_quality_rating(detail.mediaId, newRating);
-        onDetailChanged();
+    const handleQualityChange = (rating: number) => {
+        updateQuality.mutate({ mediaId: detail.mediaId, rating });
     };
 
-    const handleFavoriteChange = async (newRating: number) => {
-        await update_favorite_rating(detail.mediaId, newRating);
-        onDetailChanged();
+    const handleFavoriteChange = (rating: number) => {
+        updateFavorite.mutate({ mediaId: detail.mediaId, rating });
     };
 
     return (
@@ -69,7 +66,7 @@ export function InfoTab({ detail, mode, onDetailChanged }: InfoTabProps) {
                     value={detail.favoriteRating}
                     colorActive="purple.400"
                     colorHover="purple.300"
-                    onChange={(v) => void handleFavoriteChange(v)}
+                    onChange={handleFavoriteChange}
                 />
                 <RatingRow
                     label="Quality"
@@ -77,7 +74,7 @@ export function InfoTab({ detail, mode, onDetailChanged }: InfoTabProps) {
                     value={detail.qualityRating}
                     colorActive="yellow.400"
                     colorHover="yellow.300"
-                    onChange={(v) => void handleQualityChange(v)}
+                    onChange={handleQualityChange}
                 />
             </VStack>
 

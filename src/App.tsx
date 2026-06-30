@@ -5,11 +5,9 @@ import { SettingsDialog } from "@/components/settings";
 import { Viewer } from "@/components/viewer";
 import { WorkerStatusBanner } from "@/components/status";
 import { useConfigStore } from "@/stores/configStore.ts";
-import { useMediaStore } from "@/stores/mediaStore.ts";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
 import { initialize_library } from "@/api/libraryApi.ts";
-import { useTauriEvent } from "@/hooks/useTauriEvent";
-import { logger } from "@/utils/logger";
+import { useQueryInvalidationBridge } from "@/queries/useQueryInvalidationBridge";
 
 const App = () => {
     const config = useConfigStore(s => s.config);
@@ -17,26 +15,25 @@ const App = () => {
     const error = useConfigStore(s => s.error);
     const initConfig = useConfigStore(s => s.initConfig);
     const pickLibraryRoot = useConfigStore(s => s.pickLibraryRoot);
-    const loadAllMedia = useMediaStore(s => s.loadAllMedia);
-    const setIsLoading = useMediaStore(s => s.setIsLoading);
     const activeTab = useInterfaceStore(s => s.activeTab);
     const setActiveTab = useInterfaceStore(s => s.setActiveTab);
+    const setLibraryReady = useInterfaceStore(s => s.setLibraryReady);
+
+    // Single Tauri-event-to-query-invalidation bridge.
+    // Replaces the scattered useTauriEvent calls that used to live in MainContent + import hooks.
+    useQueryInvalidationBridge();
 
     useEffect(() => {
         void initConfig();
     }, [initConfig]);
 
-    useTauriEvent("library-initialized", () => {
-        logger.debug("app", "library initialized, loading media");
-        void loadAllMedia();
-    });
-
     useEffect(() => {
         if (config?.libraryRoot) {
-            setIsLoading(true);
+            // Reset the readiness flag so the catalog query waits for the new `library-initialized` event before refetching against a freshly (re-)initialized library.
+            setLibraryReady(false);
             void initialize_library();
         }
-    }, [config?.libraryRoot, setIsLoading]);
+    }, [config?.libraryRoot, setLibraryReady]);
 
     if (isLoading && !config) {
         return (
