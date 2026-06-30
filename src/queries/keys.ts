@@ -24,5 +24,10 @@ export const queryKeys = {
         all: () => ["sync"] as const,
         status: () => [...queryKeys.sync.all(), "status"] as const,
     },
+    search: {
+        all: () => ["search"] as const,
+        results: (serializedFilters: string) =>
+            [...queryKeys.search.all(), "results", serializedFilters] as const,
+    },
     thumbnail: (hash: string) => ["thumbnail", hash] as const,
 } as const;

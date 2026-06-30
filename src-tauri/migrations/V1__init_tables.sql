@@ -58,6 +58,32 @@ CREATE TABLE IF NOT EXISTS media_tags (
     PRIMARY KEY (media_id, tag_id)
 );
 
+-- Full-text index over the title columns, used by search. External-content table:
+-- it stores no copy of the data and reads from `media` via content_rowid, kept in sync by triggers.
+CREATE VIRTUAL TABLE IF NOT EXISTS media_fts USING fts5(
+    display_name,
+    original_file_name,
+    content='media',
+    content_rowid='id',
+    tokenize='unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER IF NOT EXISTS media_fts_ai AFTER INSERT ON media BEGIN
+    INSERT INTO media_fts(rowid, display_name, original_file_name)
+    VALUES (new.id, new.display_name, new.original_file_name);
+END;
+CREATE TRIGGER IF NOT EXISTS media_fts_ad AFTER DELETE ON media BEGIN
+    INSERT INTO media_fts(media_fts, rowid, display_name, original_file_name)
+    VALUES ('delete', old.id, old.display_name, old.original_file_name);
+END;
+-- OF display_name, original_file_name: only re-index on title edits, not on every rating/projection write.
+CREATE TRIGGER IF NOT EXISTS media_fts_au AFTER UPDATE OF display_name, original_file_name ON media BEGIN
+    INSERT INTO media_fts(media_fts, rowid, display_name, original_file_name)
+    VALUES ('delete', old.id, old.display_name, old.original_file_name);
+    INSERT INTO media_fts(rowid, display_name, original_file_name)
+    VALUES (new.id, new.display_name, new.original_file_name);
+END;
+
 -- `thumbnails` table hold all thumbnail data for each unique piece of media content.
 CREATE TABLE IF NOT EXISTS thumbnails (
     content_hash        TEXT PRIMARY KEY REFERENCES media(content_hash) ON DELETE CASCADE,

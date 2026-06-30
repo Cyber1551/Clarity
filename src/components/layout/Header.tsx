@@ -1,4 +1,4 @@
-import { Button, Flex, HStack, IconButton, Tabs, Text } from "@chakra-ui/react";
+import { Button, Flex, HStack, IconButton, Kbd, Tabs, Text } from "@chakra-ui/react";
 import { Search, Settings, Plus, FolderOpen } from "lucide-react";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
 import { useConfigStore } from "@/stores/configStore.ts";
@@ -8,8 +8,12 @@ import { TABS } from "@/constants/tabs";
 import { notify } from "@/utils/notify";
 import { SyncButton } from "./SyncButton";
 
+const isMac = typeof navigator !== "undefined" && navigator.userAgent.toLowerCase().includes("mac");
+const SEARCH_SHORTCUT = isMac ? "⌘K" : "Ctrl+K";
+
 export const Header = () => {
     const setSettingsDialogOpen = useInterfaceStore(s => s.setSettingsDialogOpen);
+    const setSearchOpen = useInterfaceStore(s => s.setSearchOpen);
     const setActiveTab = useInterfaceStore(s => s.setActiveTab);
     const setSelectedImportFolder = useInterfaceStore(s => s.setSelectedImportFolder);
     const setLastImportResult = useInterfaceStore(s => s.setLastImportResult);
@@ -68,9 +72,17 @@ export const Header = () => {
                     <Plus size={16} /> Import
                 </Button>
 
-                <IconButton aria-label="Search" variant="ghost" rounded="full">
-                    <Search size={18} />
-                </IconButton>
+                <Button
+                    aria-label="Search"
+                    size="sm"
+                    variant="outline"
+                    color="gray.500"
+                    onClick={() => setSearchOpen(true)}
+                >
+                    <Search size={16} />
+                    Search
+                    <Kbd>{SEARCH_SHORTCUT}</Kbd>
+                </Button>
 
                 <IconButton
                     aria-label="Open Library Folder"

@@ -1,9 +1,34 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use crate::media::{MediaType, MediaItem};
 use crate::jobs::JobStatus;
 use crate::media_files::MediaFileRow;
 use crate::tags::TagRow;
 use crate::thumbnails::ThumbnailRow;
+
+/// Structured search request from the command palette. `text` drives the FTS title match; the rest are optional structured filters.
+/// `quality`/`favorite` are minimums (>=); `tags` are slugs (AND).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchQuery {
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub media_type: Option<MediaType>,
+    #[serde(default)]
+    pub quality: Option<i32>,
+    #[serde(default)]
+    pub favorite: Option<i32>,
+    #[serde(default)]
+    pub loved: Option<bool>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub reviewed: Option<bool>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

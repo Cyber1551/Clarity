@@ -16,6 +16,9 @@ interface InterfaceState {
     toggleViewerSidebar: () => void;
     isLibraryReady: boolean;
     setLibraryReady: (ready: boolean) => void;
+    isSearchOpen: boolean;
+    setSearchOpen: (open: boolean) => void;
+    toggleSearch: () => void;
 }
 
 export const useInterfaceStore = create<InterfaceState>((set) => ({
@@ -34,4 +37,7 @@ export const useInterfaceStore = create<InterfaceState>((set) => ({
     toggleViewerSidebar: () => set((s) => ({ viewerSidebarOpen: !s.viewerSidebarOpen })),
     isLibraryReady: false,
     setLibraryReady: (ready) => set({ isLibraryReady: ready }),
+    isSearchOpen: false,
+    setSearchOpen: (open) => set({ isSearchOpen: open }),
+    toggleSearch: () => set((s) => ({ isSearchOpen: !s.isSearchOpen })),
 }));

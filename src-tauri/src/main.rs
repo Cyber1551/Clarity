@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::Manager;
-use app::commands::{library, media, import, sync, tags, logging as cmd_logging};
+use app::commands::{library, media, import, search, sync, tags, logging as cmd_logging};
 use app::core::config;
 use app::core::logging;
 use app::jobs::runner::JobWorkerManager;
@@ -85,6 +85,7 @@ fn main() {
             import::import_files,
             import::get_import_folders,
             import::get_items_in_import_folder,
+            search::search_media,
             sync::sync_library,
             sync::rebuild_library,
             sync::get_sync_status,

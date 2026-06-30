@@ -2,12 +2,14 @@ import { Box, Button, Center, Spinner, Tabs, Text, VStack } from "@chakra-ui/rea
 import { useEffect } from "react";
 import { Header, MainContent } from "@/components/layout";
 import { SettingsDialog } from "@/components/settings";
+import { CommandPalette } from "@/components/search/CommandPalette";
 import { Viewer } from "@/components/viewer";
 import { WorkerStatusBanner } from "@/components/status";
 import { useConfigStore } from "@/stores/configStore.ts";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
 import { initialize_library } from "@/api/libraryApi.ts";
 import { useQueryInvalidationBridge } from "@/queries/useQueryInvalidationBridge";
+import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 
 const App = () => {
     const config = useConfigStore(s => s.config);
@@ -22,6 +24,7 @@ const App = () => {
     // Single Tauri-event-to-query-invalidation bridge.
     // Replaces the scattered useTauriEvent calls that used to live in MainContent + import hooks.
     useQueryInvalidationBridge();
+    useGlobalShortcuts();
 
     useEffect(() => {
         void initConfig();
@@ -79,6 +82,7 @@ const App = () => {
             </Tabs.Root>
             <Viewer />
             <SettingsDialog />
+            <CommandPalette />
         </Box>
     );
 };

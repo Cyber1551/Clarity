@@ -25,7 +25,7 @@ const MEDIA_COLUMNS: [&str; 18] = [
 ];
 
 /// Comma-separated `media` columns, optionally prefixed (e.g. `"m."`) for joins.
-fn media_select_list(prefix: &str) -> String {
+pub(super) fn media_select_list(prefix: &str) -> String {
     MEDIA_COLUMNS
         .iter()
         .map(|col| format!("{prefix}{col}"))
