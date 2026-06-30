@@ -52,16 +52,7 @@ pub fn reconcile_media(conn: &Connection, root: &Path, media_id: i64) -> AppResu
     let mut created = 0usize;
     let mut removed = 0usize;
 
-    for rel in &desired {
-        if current.iter().any(|f| &f.rel_path == rel) {
-            continue;
-        }
-        let abs = root.join(rel);
-        create_hardlink(&canonical, &abs)?;
-        db::media_files::upsert(conn, media_id, rel, &abs)?;
-        created += 1;
-    }
-
+    // Remove undesired links first or it trips the (media_id, dir_path) unique index since a rename keeps the same dir_path.
     for f in &current {
         if desired.contains(&f.rel_path) {
             continue;
@@ -70,6 +61,16 @@ pub fn reconcile_media(conn: &Connection, root: &Path, media_id: i64) -> AppResu
         let _ = fs::remove_file(&abs);
         db::media_files::delete_by_id(conn, f.id)?;
         removed += 1;
+    }
+
+    for rel in &desired {
+        if current.iter().any(|f| &f.rel_path == rel) {
+            continue;
+        }
+        let abs = root.join(rel);
+        create_hardlink(&canonical, &abs)?;
+        db::media_files::upsert(conn, media_id, rel, &abs)?;
+        created += 1;
     }
 
     // A reviewed item no longer belongs in the Imports staging inbox.
