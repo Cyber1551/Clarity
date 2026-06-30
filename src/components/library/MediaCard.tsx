@@ -48,7 +48,7 @@ const MediaCard = ({ item, mode, allItems }: MediaCardProps) => {
         }
     };
 
-    const label = item.fileName ?? item.contentHash;
+    const label = item.displayName ?? item.fileName ?? item.contentHash;
 
     return (
         <Box

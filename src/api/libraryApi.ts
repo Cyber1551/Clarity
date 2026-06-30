@@ -32,10 +32,6 @@ export async function mark_as_reviewed(mediaId: number): Promise<void> {
     await _invoke("mark_as_reviewed", { mediaId });
 }
 
-export async function review_and_promote(mediaId: number): Promise<void> {
-    await _invoke("review_and_promote", { mediaId });
-}
-
 export async function update_quality_rating(mediaId: number, rating: number): Promise<void> {
     await _invoke("update_quality_rating", { mediaId, rating });
 }
@@ -48,8 +44,8 @@ export async function toggle_loved(mediaId: number): Promise<boolean> {
     return await _invoke("toggle_loved", { mediaId });
 }
 
-export async function rename_media_file(fileId: number, newFileName: string): Promise<void> {
-    await _invoke("rename_media_file", { fileId, newFileName });
+export async function rename_media(mediaId: number, newName: string): Promise<void> {
+    await _invoke("rename_media", { mediaId, newName });
 }
 
 export async function restart_workers(): Promise<void> {

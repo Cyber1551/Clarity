@@ -8,25 +8,23 @@ use crate::core::error::AppResult;
 use crate::core::time::now_ms;
 use crate::media_files::{MediaFileRow, NewFileRecord, UpsertFileResult};
 
-pub fn get_all(conn: &Connection) -> AppResult<Vec<MediaFileRow>> {
-    let mut stmt = conn.prepare(r#"
-        SELECT
-            id,
-            media_id,
-            rel_path,
-            dir_path,
-            file_name,
-            ext,
-            size_bytes,
-            mtime,
-            last_seen_mtime,
-            is_reviewed,
-            original_file_name,
-            created_at,
-            updated_at
-        FROM media_files
-    "#)?;
+const FILE_COLUMNS: &str = r#"
+    id,
+    media_id,
+    rel_path,
+    dir_path,
+    file_name,
+    ext,
+    size_bytes,
+    mtime,
+    last_seen_mtime,
+    created_at,
+    updated_at
+"#;
 
+pub fn get_all(conn: &Connection) -> AppResult<Vec<MediaFileRow>> {
+    let sql = format!("SELECT {FILE_COLUMNS} FROM media_files");
+    let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map([], MediaFileRow::from_row)?;
 
     let mut files = Vec::<MediaFileRow>::new();
@@ -38,74 +36,23 @@ pub fn get_all(conn: &Connection) -> AppResult<Vec<MediaFileRow>> {
 }
 
 pub fn get_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option<MediaFileRow>> {
-    let mut stmt = conn.prepare(r#"
-        SELECT
-            id,
-            media_id,
-            rel_path,
-            dir_path,
-            file_name,
-            ext,
-            size_bytes,
-            mtime,
-            last_seen_mtime,
-            is_reviewed,
-            original_file_name,
-            created_at,
-            updated_at
-        FROM media_files
-        WHERE rel_path = ?1
-    "#)?;
-
+    let sql = format!("SELECT {FILE_COLUMNS} FROM media_files WHERE rel_path = ?1");
+    let mut stmt = conn.prepare(&sql)?;
     let existing = stmt.query_row(params![rel_path], MediaFileRow::from_row).optional()?;
     Ok(existing)
 }
 
 pub fn get_by_id(conn: &Connection, file_id: i64) -> AppResult<Option<MediaFileRow>> {
-    let mut stmt = conn.prepare(r#"
-        SELECT
-            id,
-            media_id,
-            rel_path,
-            dir_path,
-            file_name,
-            ext,
-            size_bytes,
-            mtime,
-            last_seen_mtime,
-            is_reviewed,
-            original_file_name,
-            created_at,
-            updated_at
-        FROM media_files
-        WHERE id = ?1
-    "#)?;
-
+    let sql = format!("SELECT {FILE_COLUMNS} FROM media_files WHERE id = ?1");
+    let mut stmt = conn.prepare(&sql)?;
     let existing = stmt.query_row(params![file_id], MediaFileRow::from_row).optional()?;
     Ok(existing)
 }
 
 /// Lists all media_files rows for a given media_id.
 pub fn list_by_media_id(conn: &Connection, media_id: i64) -> AppResult<Vec<MediaFileRow>> {
-    let mut stmt = conn.prepare(r#"
-        SELECT
-            id,
-            media_id,
-            rel_path,
-            dir_path,
-            file_name,
-            ext,
-            size_bytes,
-            mtime,
-            last_seen_mtime,
-            is_reviewed,
-            original_file_name,
-            created_at,
-            updated_at
-        FROM media_files
-        WHERE media_id = ?1
-    "#)?;
-
+    let sql = format!("SELECT {FILE_COLUMNS} FROM media_files WHERE media_id = ?1");
+    let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params![media_id], MediaFileRow::from_row)?;
     let mut files = Vec::new();
     for r in rows { files.push(r?); }
@@ -114,25 +61,8 @@ pub fn list_by_media_id(conn: &Connection, media_id: i64) -> AppResult<Vec<Media
 
 /// Lists all file rows for a given media_id scoped to a directory path string.
 pub fn list_by_media_and_dir(conn: &Connection, media_id: i64, dir_path: &str) -> AppResult<Vec<MediaFileRow>> {
-    let mut stmt = conn.prepare(r#"
-        SELECT
-            id,
-            media_id,
-            rel_path,
-            dir_path,
-            file_name,
-            ext,
-            size_bytes,
-            mtime,
-            last_seen_mtime,
-            is_reviewed,
-            original_file_name,
-            created_at,
-            updated_at
-        FROM media_files
-        WHERE media_id = ?1 AND dir_path = ?2
-    "#)?;
-
+    let sql = format!("SELECT {FILE_COLUMNS} FROM media_files WHERE media_id = ?1 AND dir_path = ?2");
+    let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params![media_id, dir_path], MediaFileRow::from_row)?;
     let mut files = Vec::new();
     for r in rows { files.push(r?); }
@@ -142,53 +72,12 @@ pub fn list_by_media_and_dir(conn: &Connection, media_id: i64, dir_path: &str) -
 /// Lists all file rows for a given media_id where the directory path starts with a prefix (LIKE prefix%).
 pub fn list_by_media_in_dir_like(conn: &Connection, media_id: i64, dir_prefix: &str) -> AppResult<Vec<MediaFileRow>> {
     let like_pattern = format!("{}%", dir_prefix);
-    let mut stmt = conn.prepare(r#"
-        SELECT
-            id,
-            media_id,
-            rel_path,
-            dir_path,
-            file_name,
-            ext,
-            size_bytes,
-            mtime,
-            last_seen_mtime,
-            is_reviewed,
-            original_file_name,
-            created_at,
-            updated_at
-        FROM media_files
-        WHERE media_id = ?1 AND dir_path LIKE ?2
-    "#)?;
-
+    let sql = format!("SELECT {FILE_COLUMNS} FROM media_files WHERE media_id = ?1 AND dir_path LIKE ?2");
+    let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params![media_id, like_pattern], MediaFileRow::from_row)?;
     let mut files = Vec::new();
     for r in rows { files.push(r?); }
     Ok(files)
-}
-
-pub fn rename(conn: &Connection, link_id: i64, new_file_name: &str, new_rel_path: &str, now: i64) -> AppResult<()> {
-    conn.execute(
-        r#"
-        UPDATE media_files
-        SET file_name = ?1, rel_path = ?2, updated_at = ?3
-        WHERE id = ?4
-        "#,
-        params![new_file_name, new_rel_path, now, link_id],
-    )?;
-    Ok(())
-}
-
-pub fn set_original_file_name(conn: &Connection, link_id: i64, original_name: &str, now: i64) -> AppResult<()> {
-    conn.execute(
-        r#"
-        UPDATE media_files
-        SET original_file_name = ?1, updated_at = ?2
-        WHERE id = ?3 AND original_file_name IS NULL
-        "#,
-        params![original_name, now, link_id],
-    )?;
-    Ok(())
 }
 
 pub fn update_last_seen(conn: &Connection, rel_path: &str, mtime: &i64, now: &i64) -> AppResult<()> {
@@ -282,8 +171,6 @@ pub fn upsert(conn: &Connection, media_id: i64, rel_path: &str, full_path: &Path
                 size_bytes,
                 mtime,
                 last_seen_mtime: mtime,
-                is_reviewed: false,
-                original_file_name: None,
                 created_at: now,
                 updated_at: now,
             };
@@ -309,20 +196,14 @@ pub fn delete_by_rel_path(conn: &Connection, rel_path: &str) -> AppResult<Option
     Ok(file_entry)
 }
 
-/// Sets the reviewed flag for all media_files that belong to a given media_id.
-pub fn set_reviewed_for_media(conn: &Connection, media_id: i64, reviewed: bool) -> AppResult<usize> {
-    let now = now_ms();
-    let flag: i64 = if reviewed { 1 } else { 0 };
-    let changed = conn.execute(
-        r#"
-        UPDATE media_files
-        SET is_reviewed = ?1,
-            updated_at = ?2
-        WHERE media_id = ?3
-    "#,
-        params![flag, now, media_id],
+/// Deletes all rows whose dir_path starts with `dir_prefix` (used by the full library rebuild).
+pub fn delete_by_dir_like(conn: &Connection, dir_prefix: &str) -> AppResult<usize> {
+    let like_pattern = format!("{}%", dir_prefix);
+    let deleted = conn.execute(
+        "DELETE FROM media_files WHERE dir_path LIKE ?1",
+        params![like_pattern],
     )?;
-    Ok(changed as usize)
+    Ok(deleted)
 }
 
 /// Removes media_files from the database that are not in the seen set.
@@ -372,8 +253,7 @@ pub fn remove_deleted_files(conn: &Connection, seen_rel_paths: &HashSet<String>)
 
 /// Removes file rows under a directory subtree (dir_path LIKE `${dir_prefix}%`) that were not seen.
 ///
-/// This is a scoped variant used by directory-specific reconciliation (e.g., Unsorted)
-/// to avoid deleting media_files from other projections (like Sorted tags).
+/// This is a scoped variant used by directory-specific reconciliation (e.g., Imports) to avoid deleting media_files from other projections (like Library tags).
 pub fn remove_deleted_files_in_dir_like(
     conn: &Connection,
     dir_prefix: &str,
@@ -419,13 +299,11 @@ fn insert(conn: &Connection, new_file: &NewFileRecord) -> AppResult<i64> {
             size_bytes,
             mtime,
             last_seen_mtime,
-            is_reviewed,
             created_at,
             updated_at
         ) VALUES (
             ?1, ?2, ?3, ?4, ?5,
             ?6, ?7, ?7,
-            0,
             ?8, ?8
         )
     "#, params![

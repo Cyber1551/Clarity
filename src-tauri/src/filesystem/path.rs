@@ -36,6 +36,26 @@ pub fn get_rel_path(path: &Path, library_root: &Path) -> AppResult<PathBuf> {
     }
 }
 
+/// Makes a string safe as a single path component: strips chars illegal on Windows/macOS and trims trailing dots/spaces (which Windows silently drops). 
+/// Falls back to `"untitled"`.
+pub fn sanitize_component(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    for ch in raw.chars() {
+        match ch {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => out.push('_'),
+            c if (c as u32) < 0x20 => {}
+            c => out.push(c),
+        }
+    }
+
+    let trimmed = out.trim().trim_end_matches(['.', ' ']).trim();
+    if trimmed.is_empty() {
+        "untitled".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 pub fn split_path(path: &str) -> PathComponents {
     let path = Path::new(path);
 

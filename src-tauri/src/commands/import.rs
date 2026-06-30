@@ -56,6 +56,11 @@ pub async fn import_files(
             .to_string_lossy()
             .to_string();
         let ext = src_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        let file_stem = src_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(file_name.as_str())
+            .to_string();
 
         let dest_path_abs = import_dir_abs.join(file_name.as_str());
         let dest_path_rel = format!("{}/{}", import_dir_rel, file_name);
@@ -94,7 +99,7 @@ pub async fn import_files(
 
                 m
             }
-            None => db::media::insert_for_hash(&conn, &content_hash, media_type, now).inspect_err(AppError::log)?,
+            None => db::media::insert_for_hash(&conn, &content_hash, media_type, &file_stem, now).inspect_err(AppError::log)?,
         };
 
         // 3. Ingest to .objects and projection (hardlink) to Imports

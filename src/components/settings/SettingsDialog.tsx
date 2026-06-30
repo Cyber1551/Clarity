@@ -2,6 +2,7 @@ import { Button, Field, Input, Spinner, Stack, Text } from "@chakra-ui/react";
 import { useInterfaceStore } from "@/stores/interfaceStore.ts";
 import { useConfigStore } from "@/stores/configStore.ts";
 import { AppDialog } from "@/components/common";
+import { useRebuildLibrary } from "@/queries/library/useRebuildLibrary";
 
 export const SettingsDialog = () => {
     const isSettingsDialogOpen = useInterfaceStore(s => s.isSettingsDialogOpen);
@@ -11,6 +12,8 @@ export const SettingsDialog = () => {
     const isLoading = useConfigStore(s => s.isLoading);
     const error = useConfigStore(s => s.error);
     const pickLibraryRoot = useConfigStore(s => s.pickLibraryRoot);
+
+    const rebuild = useRebuildLibrary();
 
     return (
         <AppDialog
@@ -52,6 +55,28 @@ export const SettingsDialog = () => {
                         This is the root folder used for your media library. All
                         imports, thumbnails, and hard-linked views
                         will live under this directory.
+                    </Field.HelperText>
+                </Field.Root>
+
+                <Field.Root>
+                    <Field.Label fontSize="sm" fontWeight="medium">
+                        Library Projection
+                    </Field.Label>
+
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        alignSelf="flex-start"
+                        onClick={() => rebuild.mutate()}
+                        loading={rebuild.isPending}
+                        loadingText="Rebuilding..."
+                    >
+                        Rebuild library
+                    </Button>
+
+                    <Field.HelperText fontSize="xs" color="fg.muted">
+                        Deletes and regenerates the entire <strong>Library</strong> folder tree from the database. 
+                        Use this if the folders ever drift out of sync. Your originals in <strong> .objects</strong> are never touched.
                     </Field.HelperText>
                 </Field.Root>
             </Stack>

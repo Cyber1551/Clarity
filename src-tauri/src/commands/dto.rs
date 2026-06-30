@@ -2,6 +2,7 @@ use serde::Serialize;
 use crate::media::{MediaType, MediaItem};
 use crate::jobs::JobStatus;
 use crate::media_files::MediaFileRow;
+use crate::tags::TagRow;
 use crate::thumbnails::ThumbnailRow;
 
 #[derive(Debug, Clone, Serialize)]
@@ -11,6 +12,7 @@ pub struct MediaItemDto {
     pub rel_path: Option<String>,
     pub dir_path: Option<String>,
     pub file_name: Option<String>,
+    pub display_name: Option<String>,
     pub ext: Option<String>,
     pub media_type: MediaType,
     pub width: Option<i32>,
@@ -33,6 +35,7 @@ impl From<MediaItem> for MediaItemDto {
             rel_path: item.rel_path,
             dir_path: item.dir_path,
             file_name: item.file_name,
+            display_name: item.media.display_name,
             ext: item.ext,
             media_type: item.media.media_type,
             width: item.media.width,
@@ -52,13 +55,36 @@ impl From<MediaItem> for MediaItemDto {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TagDto {
+    pub id: i64,
+    pub name: String,
+    pub slug: String,
+}
+
+impl From<TagRow> for TagDto {
+    fn from(tag: TagRow) -> Self {
+        Self {
+            id: tag.id,
+            name: tag.name,
+            slug: tag.slug,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncStatusDto {
+    pub dirty_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileDto {
     pub id: i64,
     pub rel_path: String,
     pub dir_path: String,
     pub file_name: String,
     pub ext: String,
-    pub original_file_name: Option<String>,
 }
 
 impl From<MediaFileRow> for FileDto {
@@ -69,7 +95,6 @@ impl From<MediaFileRow> for FileDto {
             dir_path: file.dir_path,
             file_name: file.file_name,
             ext: file.ext,
-            original_file_name: file.original_file_name,
         }
     }
 }
@@ -80,6 +105,8 @@ pub struct MediaDetailDto {
     pub media_id: i64,
     pub content_hash: String,
     pub media_type: MediaType,
+    pub display_name: Option<String>,
+    pub original_file_name: Option<String>,
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub duration_ms: Option<i64>,
@@ -89,6 +116,7 @@ pub struct MediaDetailDto {
     pub size_bytes: i64,
     pub created_at: i64,
     pub reviewed_at: Option<i64>,
+    pub tags: Vec<TagDto>,
     pub files: Vec<FileDto>,
     pub canonical_path: String,
 }

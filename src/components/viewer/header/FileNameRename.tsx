@@ -2,22 +2,16 @@ import { Input, Text } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 interface FileNameRenameProps {
-    fileName: string;
-    /** Underlying media file id. When null the rename UI is read-only. */
-    fileId: number | null | undefined;
-    /** Renames the file via the appropriate backend mutation. */
-    onSubmit: (fileId: number, newName: string) => Promise<void>;
-    /** Notifies parents whether a rename is currently in progress (for autohide pause). */
+    /** Current display name, no extension. */
+    name: string;
+    onSubmit: (newName: string) => Promise<void>;
+    /** Lets the parent pause header autohide while a rename is in progress. */
     onActiveChange?: (active: boolean) => void;
 }
 
-/**
- * Click-to-edit filename label. Manages its own rename state machine and
- * delegates the actual mutation to its parent.
- */
+/** Click-to-edit label for the item's logical (display-name) rename. */
 export function FileNameRename({
-    fileName,
-    fileId,
+    name,
     onSubmit,
     onActiveChange,
 }: FileNameRenameProps) {
@@ -37,22 +31,22 @@ export function FileNameRename({
     }, [renaming, onActiveChange]);
 
     const start = useCallback(() => {
-        setValue(fileName);
+        setValue(name);
         setRenaming(true);
-    }, [fileName]);
+    }, [name]);
 
     const cancel = useCallback(() => {
         setRenaming(false);
     }, []);
 
     const submit = useCallback(async () => {
-        if (!fileId || !value.trim() || value === fileName) {
+        if (!value.trim() || value === name) {
             cancel();
             return;
         }
-        await onSubmit(fileId, value.trim());
+        await onSubmit(value.trim());
         setRenaming(false);
-    }, [fileId, value, fileName, cancel, onSubmit]);
+    }, [value, name, cancel, onSubmit]);
 
     const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter") {
@@ -95,7 +89,7 @@ export function FileNameRename({
             onClick={start}
             title="Click to rename"
         >
-            {fileName || "Untitled"}
+            {name || "Untitled"}
         </Text>
     );
 }

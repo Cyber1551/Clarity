@@ -11,11 +11,8 @@ import { queryKeys } from "./keys";
 const IMPORTS_FOLDER_RE = /^Imports\/([^/]+)\//;
 
 /**
- * Single Tauri-event-to-query-invalidation bridge. Mounted once from `App`.
- *
- * - `library-initialized` -> set `isLibraryReady`
- * - `library-changed` -> invalidates the entire library and imports domains via hierarchical key prefixes.
- * - `job-completed` with a `relPath` -> fetches the single item and splices it into any cached list that contains it. Preserves the old per-item refresh behavior so heavy import runs don't trigger full grid refetches.
+ * Single Tauri-event-to-query-invalidation bridge, mounted once from `App`. 
+ * The `job-completed` handler splices the one changed item into cached lists rather than invalidating, so heavy import runs don't trigger full grid refetches.
  */
 export function useQueryInvalidationBridge() {
     const queryClient = useQueryClient();
@@ -44,9 +41,10 @@ export function useQueryInvalidationBridge() {
     });
 
     useTauriEvent("library-changed", () => {
-        logger.debug("query-bridge", "library changed - invalidating library + imports domains");
+        logger.debug("query-bridge", "library changed - invalidating library + imports + sync domains");
         void queryClient.invalidateQueries({ queryKey: queryKeys.library.all() });
         void queryClient.invalidateQueries({ queryKey: queryKeys.imports.all() });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sync.status() });
     });
 
     useTauriEvent<JobCompletedPayload>("job-completed", (event) => {

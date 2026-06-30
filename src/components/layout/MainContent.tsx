@@ -11,9 +11,9 @@ const TAB_PANELS: Record<ActiveTab, () => React.ReactNode> = {
     imports: () => <ImportsView />,
     library: () => <LibraryPanel />,
     people: () => "People",
-    explore: () => "Explore",
-    moments: () => "Moments",
-    session: () => "Sessions",
+    //explore: () => "Explore",
+    //moments: () => "Moments",
+    //session: () => "Sessions",
 };
 
 function LibraryPanel() {

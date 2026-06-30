@@ -13,6 +13,7 @@ import {
     MetadataRow,
     RatingRow,
 } from "@/components/common";
+import { TagEditor } from "./TagEditor";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface InfoTabProps {
@@ -23,7 +24,7 @@ interface InfoTabProps {
 export function InfoTab({ detail, mode }: InfoTabProps) {
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [copyHash, hashCopied] = useCopyToClipboard();
-    const originalFileName = detail.files?.[0]?.originalFileName ?? null;
+    const originalFileName = detail.originalFileName;
     const updateQuality = useUpdateQualityRating();
     const updateFavorite = useUpdateFavoriteRating();
 
@@ -77,6 +78,8 @@ export function InfoTab({ detail, mode }: InfoTabProps) {
                     onChange={handleQualityChange}
                 />
             </VStack>
+
+            <TagEditor mediaId={detail.mediaId} />
 
             <ComingSoonRow heading="People" emptyText="No people tagged" icon={Users} actionLabel="Tag someone" />
 

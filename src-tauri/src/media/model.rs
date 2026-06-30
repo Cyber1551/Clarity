@@ -52,6 +52,10 @@ pub struct MediaRow {
     /// Blake3 hash of the file content
     pub content_hash: String,
     pub media_type: MediaType,
+    /// Logical name (no extension) that drives the projected hardlink filenames.
+    pub display_name: Option<String>,
+    /// Immutable name from first import (no extension).
+    pub original_file_name: Option<String>,
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub duration_ms: Option<i64>,
@@ -62,6 +66,8 @@ pub struct MediaRow {
     pub metadata_status: JobStatus,
     pub thumbnail_status: JobStatus,
     pub reviewed_at: Option<i64>,
+    /// Last time the item's attributes were materialized into the Library projection.
+    pub projected_at: Option<i64>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -72,6 +78,8 @@ impl MediaRow {
             id: row.get("id")?,
             content_hash: row.get("content_hash")?,
             media_type: row.get("media_type")?,
+            display_name: row.get("display_name")?,
+            original_file_name: row.get("original_file_name")?,
             width: row.get("width")?,
             height: row.get("height")?,
             duration_ms: row.get("duration_ms")?,
@@ -82,6 +90,7 @@ impl MediaRow {
             metadata_status: row.get("metadata_status")?,
             thumbnail_status: row.get("thumbnail_status")?,
             reviewed_at: row.get("reviewed_at")?,
+            projected_at: row.get("projected_at")?,
             created_at: row.get("created_at")?,
             updated_at: row.get("updated_at")?,
         })

@@ -6,6 +6,7 @@ import { import_files } from "@/api/importApi";
 import { openLibraryRoot } from "@/api/configApi";
 import { TABS } from "@/constants/tabs";
 import { notify } from "@/utils/notify";
+import { SyncButton } from "./SyncButton";
 
 export const Header = () => {
     const setSettingsDialogOpen = useInterfaceStore(s => s.setSettingsDialogOpen);
@@ -61,6 +62,8 @@ export const Header = () => {
             </Tabs.List>
 
             <HStack gap={3}>
+                <SyncButton />
+
                 <Button size="sm" onClick={() => void handleImport()} variant="outline">
                     <Plus size={16} /> Import
                 </Button>

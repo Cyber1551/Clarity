@@ -18,7 +18,7 @@ interface ViewerHeaderProps {
     onClose: () => void;
     onToggleSidebar: () => void;
     onMarkReviewed: () => void;
-    onRename: (fileId: number, newName: string) => Promise<void>;
+    onRename: (newName: string) => Promise<void>;
     onLoveToggle: () => void;
     onRenameActiveChange: (active: boolean) => void;
 }
@@ -52,7 +52,7 @@ export function ViewerHeader({
     onRenameActiveChange,
 }: ViewerHeaderProps) {
     const file = detail?.files?.[0];
-    const fileName = file?.fileName ?? "";
+    const displayName = detail?.displayName ?? file?.fileName ?? "";
     const formatLabel = file?.ext?.toUpperCase() ?? "";
 
     return (
@@ -87,8 +87,7 @@ export function ViewerHeader({
 
             <HStack flex={1} minW={0} gap={2}>
                 <FileNameRename
-                    fileName={fileName}
-                    fileId={file?.id}
+                    name={displayName}
                     onSubmit={onRename}
                     onActiveChange={onRenameActiveChange}
                 />

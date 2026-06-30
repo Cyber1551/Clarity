@@ -1,8 +1,5 @@
 /**
- * Single source of truth for TanStack Query keys.
- *
- * Keys are hierarchical so each domain has an `all()` accessor that matches every key inside it as a prefix.
- * That means `invalidateQueries({ queryKey: queryKeys.library.all() })` invalidates `library.items()`, `library.detail(id)`, and any future `library.*` entries in one call
+ * * Single source of truth for TanStack Query keys.
  */
 export const queryKeys = {
     library: {
@@ -16,6 +13,16 @@ export const queryKeys = {
         folders: () => [...queryKeys.imports.all(), "folders"] as const,
         folderItems: (folder: string) =>
             [...queryKeys.imports.all(), "items", folder] as const,
+    },
+    tags: {
+        all: () => ["tags"] as const,
+        list: () => [...queryKeys.tags.all(), "list"] as const,
+        forMedia: (mediaId: number) =>
+            [...queryKeys.tags.all(), "media", mediaId] as const,
+    },
+    sync: {
+        all: () => ["sync"] as const,
+        status: () => [...queryKeys.sync.all(), "status"] as const,
     },
     thumbnail: (hash: string) => ["thumbnail", hash] as const,
 } as const;

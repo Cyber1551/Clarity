@@ -16,8 +16,6 @@ pub struct MediaFileRow {
     pub mtime: i64,
     /// Last time this file was seen during a scan
     pub last_seen_mtime: i64,
-    pub is_reviewed: bool,
-    pub original_file_name: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -34,8 +32,6 @@ impl MediaFileRow {
             size_bytes: row.get("size_bytes")?,
             mtime: row.get("mtime")?,
             last_seen_mtime: row.get("last_seen_mtime")?,
-            is_reviewed: row.get::<_, i64>("is_reviewed")? != 0,
-            original_file_name: row.get("original_file_name")?,
             created_at: row.get("created_at")?,
             updated_at: row.get("updated_at")?,
         })

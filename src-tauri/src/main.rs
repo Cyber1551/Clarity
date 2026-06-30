@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::Manager;
-use app::commands::{library, media, import, logging as cmd_logging};
+use app::commands::{library, media, import, sync, tags, logging as cmd_logging};
 use app::core::config;
 use app::core::logging;
 use app::jobs::runner::JobWorkerManager;
@@ -45,6 +45,21 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| if let tauri::WindowEvent::CloseRequested { .. } = event {
+            // Best-effort flush of dirty items into the Library projection on close; failures are logged.
+            let db_manager = window.state::<Arc<DbManager>>();
+            let library_root_state = window.state::<Arc<LibraryRootState>>();
+            let root = library_root_state.0.lock().unwrap().clone();
+            if let Some(root) = root {
+                match db_manager.get_connection(&root) {
+                    Ok(conn) => {
+                        if let Err(e) = app::projection::sync_library(&conn, &root) {
+                            e.log();
+                        }
+                    }
+                    Err(e) => e.log(),
+                }
+            }
+
             // Shutdown threads cleanly on application close
             let job_manager = window.state::<JobWorkerManager>();
             job_manager.shutdown();
@@ -63,14 +78,20 @@ fn main() {
             media::get_media_detail,
             media::get_thumbnail,
             media::mark_as_reviewed,
-            media::review_and_promote,
             media::update_quality_rating,
             media::update_favorite_rating,
             media::toggle_loved,
-            media::rename_media_file,
+            media::rename_media,
             import::import_files,
             import::get_import_folders,
             import::get_items_in_import_folder,
+            sync::sync_library,
+            sync::rebuild_library,
+            sync::get_sync_status,
+            tags::list_tags,
+            tags::get_media_tags,
+            tags::add_media_tag,
+            tags::remove_media_tag,
             cmd_logging::log_event,
         ])
         .run(tauri::generate_context!())

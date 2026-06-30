@@ -25,6 +25,18 @@ pub const OBJECTS_DIRECTORY: &str = ".objects";
 pub const IMPORTS_DIRECTORY: &str = "Imports";
 pub const LIBRARY_DIRECTORY: &str = "Library";
 
+// Library projection axes (folders under LIBRARY_DIRECTORY)
+pub const AXIS_BY_TYPE: &str = "By Type";
+pub const AXIS_BY_TAG: &str = "By Tag";
+pub const AXIS_BY_RATING: &str = "By Rating";
+pub const AXIS_BY_FAVORITE: &str = "By Favorite";
+pub const AXIS_LOVED: &str = "Loved";
+
+// Folder names for the "By Type" axis, keyed off MediaType.
+pub const TYPE_FOLDER_IMAGE: &str = "Photos";
+pub const TYPE_FOLDER_VIDEO: &str = "Videos";
+pub const TYPE_FOLDER_OTHER: &str = "Other";
+
 // Media Types
 pub const VALID_IMAGE_EXTENSIONS: [&str; 8] = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "svg", "webp"];
 pub const VALID_VIDEO_EXTENSIONS: [&str; 7] = ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv"];

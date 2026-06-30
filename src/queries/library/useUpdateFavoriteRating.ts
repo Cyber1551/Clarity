@@ -10,6 +10,7 @@ export function useUpdateFavoriteRating() {
             update_favorite_rating(mediaId, rating),
         onSuccess: (_data, { mediaId }) => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.library.detail(mediaId) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.sync.status() });
         },
         onError: (e) => notify.error("Couldn't update favorite rating", e),
     });

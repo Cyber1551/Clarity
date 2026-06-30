@@ -9,6 +9,7 @@ export function useToggleLoved() {
         mutationFn: (mediaId: number) => toggle_loved(mediaId),
         onSuccess: (_data, mediaId) => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.library.detail(mediaId) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.sync.status() });
         },
         onError: (e) => notify.error("Couldn't update loved", e),
     });
